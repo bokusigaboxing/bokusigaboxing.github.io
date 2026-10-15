@@ -1,0 +1,841 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>BSS 0　初めてのBSS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Shippori+Mincho+B1:wght@400;700;800&family=Zen+Kaku+Gothic+New:wght@400;700;900&family=Yomogi&display=swap">
+<style>
+
+/* 刷り重ね — 紙と層。--mm は紙の上の1ミリ */
+.ks-desk{background:var(--desk,#d9dcd8);color:var(--desk-ink,#22262a);font-family:var(--font-gothic,"Zen Kaku Gothic New",sans-serif)}
+.ks-sheet{position:relative;width:100%;max-width:100%;background:var(--paper,#f3f1ea);color:var(--ink,#141414);container-type:inline-size;overflow:hidden;isolation:isolate;
+  --mm:calc(100cqw / var(--mm-w, 148));box-shadow:0 1px 0 rgba(0,0,0,.08),0 14px 30px -18px rgba(0,0,0,.45)}
+
+/* 版：墨版(1) → 貼り込み(2) → 朱版・乗算(3) → テープ(4) → 粒子(5) → 逃げ場(6) → 読ませる層(7) */
+.ks-sheet canvas{position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none}
+.ks-sheet canvas.ks-k{z-index:var(--z-plate-ink,1)}
+.ks-sheet canvas.ks-r{z-index:var(--z-plate-spot,3);mix-blend-mode:multiply}
+.ks-sheet.ks-misreg canvas.ks-r{transform:translate(calc(var(--mm)*var(--rx,0)),calc(var(--mm)*var(--ry,0)));filter:url(#ks-rough)}
+.ks-sheet svg.ks-grain{position:absolute;inset:0;width:100%;height:100%;z-index:var(--z-grain,5);mix-blend-mode:multiply;opacity:var(--grain-opacity,.42);pointer-events:none}
+
+/* ③ 貼り込み */
+.ks-paste{position:absolute;z-index:var(--z-paste,2);display:block;transform-origin:50% 50%;box-shadow:none;filter:drop-shadow(var(--paste-shadow,0 1.3px 1.9px rgba(0,0,0,.32)))}
+.ks-paste.ks-ink{filter:none;mix-blend-mode:multiply}
+.ks-paste.ks-full{object-fit:cover}
+.ks-tape{position:absolute;z-index:var(--z-tape,4);height:calc(var(--mm)*5.6);background:var(--tape,rgba(221,211,180,.74));transform-origin:50% 50%;box-shadow:0 0 calc(var(--mm)*.3) rgba(0,0,0,.12);pointer-events:none}
+.ks-scrap{position:absolute;z-index:var(--z-paste,2);background-size:100% 100%;transform-origin:50% 50%;filter:drop-shadow(var(--paste-shadow,0 1.3px 1.9px rgba(0,0,0,.32)));
+  display:flex;align-items:center;justify-content:center;color:var(--ink,#141414);text-align:center}
+.ks-tiles{position:absolute;z-index:var(--z-paste,2);transform-origin:50% 50%}
+.ks-tile{position:absolute;background:#fbfbf7;filter:drop-shadow(var(--tile-shadow,0 1.1px 1.7px rgba(0,0,0,.3)))}
+.ks-tile-pr{position:absolute;inset:calc(var(--mm)*2.2);overflow:hidden}
+.ks-tile-pr span{position:absolute;display:flex;align-items:center;justify-content:center;font-family:var(--font-gothic,"Zen Kaku Gothic New",sans-serif);font-weight:900;line-height:1;letter-spacing:-.06em;color:var(--ink,#141414);white-space:nowrap}
+
+/* ① 地の平らな部分＝逃げ場、⑤ 読ませる層 */
+.ks-esc{position:absolute;z-index:var(--z-escape,6);background:var(--ink,#141414);color:var(--paper-on-ink,#efece3);transform-origin:50% 50%}
+.ks-read{position:absolute;z-index:var(--z-read,7);background:var(--paper,#f3f1ea);color:var(--ink,#141414);padding:calc(var(--mm)*2.6) calc(var(--mm)*3.2);
+  font-family:var(--font-mincho,"Shippori Mincho B1",serif);font-size:calc(var(--mm)*2.9);line-height:1.9}
+.ks-read p{margin:0}
+.ks-read p + p{margin-top:calc(var(--mm)*1.6)}
+.ks-read .ks-spot{color:var(--spot-text,#b8371f)}
+.ks-read .ks-accent{color:var(--accent,#1f4fb0)}
+.ks-read cite{display:block;font-style:normal;font-family:var(--font-gothic,"Zen Kaku Gothic New",sans-serif);font-size:calc(var(--mm)*2.1);line-height:1.7;color:var(--ink-soft,#4a4a48);letter-spacing:.06em;margin-top:calc(var(--mm)*1.2)}
+.ks-read q{display:block;font-family:var(--font-mono,"IBM Plex Mono",monospace);font-style:italic;font-size:calc(var(--mm)*2.3);color:var(--ink-soft,#4a4a48);quotes:none;line-height:1.5}
+.ks-read.ks-boxed{border:calc(var(--mm)*.25) solid var(--ink,#141414)}
+.ks-h{margin:0;font-family:var(--font-mincho,"Shippori Mincho B1",serif);font-weight:400;font-size:calc(var(--mm)*8);letter-spacing:.1em;line-height:1}
+.ks-h small{display:inline-block;margin-left:calc(var(--mm)*4);font-family:var(--font-gothic,"Zen Kaku Gothic New",sans-serif);font-size:calc(var(--mm)*2.5);letter-spacing:.24em;vertical-align:middle}
+.ks-label{font-family:var(--font-gothic,"Zen Kaku Gothic New",sans-serif);font-weight:700;font-size:calc(var(--mm)*3.3);letter-spacing:.24em}
+.ks-code{font-family:var(--font-mono,"IBM Plex Mono",monospace);font-size:calc(var(--mm)*1.8);line-height:1.8;opacity:.82}
+
+/* 行を重ねる一覧（Kamikene『+81』） */
+.ks-overlap{margin:0;padding:0;list-style:none;font-family:var(--font-gothic,"Zen Kaku Gothic New",sans-serif);font-weight:900;font-size:calc(var(--mm)*5.2);line-height:.78;letter-spacing:-.02em}
+
+/* 暗い紙（P02 など mode: dark の手札）：インクは不透明、光を足して重ねる */
+.ks-dark.ks-sheet canvas.ks-r{mix-blend-mode:screen}
+.ks-dark .ks-paste.ks-ink{mix-blend-mode:screen}
+.ks-dark svg.ks-grain{mix-blend-mode:screen;filter:invert(1);opacity:.07}
+
+/* 層を外す */
+.ks-off-1 svg.ks-grain,.ks-off-1 .ks-esc{display:none}
+.ks-off-3 .ks-paste,.ks-off-3 .ks-tiles,.ks-off-3 .ks-tape,.ks-off-3 .ks-scrap{display:none}
+.ks-off-5 .ks-read{visibility:hidden}
+
+@media (prefers-reduced-motion: reduce){.ks-sheet *{transition:none!important}}
+
+/* 手札の一覧（CardDeck） */
+.ks-deck{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:14px;font-family:var(--font-gothic,"Zen Kaku Gothic New",sans-serif)}
+.ks-card{margin:0;display:grid;gap:6px;align-content:start}
+.ks-card figcaption{font-size:12px;letter-spacing:.06em;color:var(--desk-ink,#22262a)}
+.ks-swatches{display:flex;height:72px;border:1px solid var(--desk-line,#b9beba)}
+.ks-swatches span{display:block;min-width:8px}
+.ks-thumb{width:100%;height:auto;display:block;background:var(--paper,#f3f1ea)}
+
+/* 生っぽさ（The End of Print から。C11・P04）：写真一枚の地、文字の上に透ける汚れ、一行ずつの白い帯、一句を積む */
+.ks-ground{position:absolute;inset:0;width:100%;height:100%;z-index:0;object-fit:cover;display:block}
+.ks-stain{position:absolute;z-index:8;pointer-events:none;mix-blend-mode:multiply;display:block}
+.ks-dark .ks-stain{mix-blend-mode:screen}
+.ks-sheet canvas.ks-over{position:absolute;inset:0;width:100%;height:100%;z-index:8;pointer-events:none}
+.ks-off-6 .ks-stain,.ks-off-6 canvas.ks-over{display:none}
+.ks-off-1 .ks-ground{visibility:hidden}
+.ks-read.ks-plain{background:transparent;padding:0;text-shadow:0 0 calc(var(--mm)*.4) var(--paper,#f3f1ea),0 0 calc(var(--mm)*.8) var(--paper,#f3f1ea)}
+.ks-read.ks-strip{background:transparent;padding:0;font-family:var(--font-gothic,"Zen Kaku Gothic New",sans-serif);font-weight:700;font-size:calc(var(--mm)*2.2);line-height:2.05;color:var(--ink,#141414)}
+.ks-strip .ks-band{background:var(--paper,#f3f1ea);box-decoration-break:clone;-webkit-box-decoration-break:clone;padding:calc(var(--mm)*.5) calc(var(--mm)*1.2)}
+.ks-read.ks-strip-big{font-family:var(--font-mincho,"Shippori Mincho B1",serif);font-size:calc(var(--mm)*3.6);line-height:1.95}
+.ks-read.ks-stack{background:transparent;padding:0;margin:0;white-space:nowrap;line-height:1;color:var(--ink,#141414)}
+.ks-stack.ks-inv{color:var(--paper,#f3f1ea)}
+.ks-stack .box{background:var(--ink,#141414);color:var(--paper,#f3f1ea);padding:0 .08em}
+.ks-stack.ks-inv .box{background:var(--paper,#f3f1ea);color:var(--ink,#141414)}
+.ks-stack .ul{text-decoration:underline;text-decoration-thickness:.07em;text-underline-offset:.12em}
+
+/* BSS の号に共通の組み方。紙は雑誌 A4 の片頁（210×297mm、K＝1）、色は手札 P04「投影機の青と赤ペン」 */
+:root{
+  --font-mincho:"Shippori Mincho B1","Hiragino Mincho ProN","Yu Mincho",serif;
+  --font-gothic:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",sans-serif;
+  --font-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  --font-hand:"Yomogi","Zen Kaku Gothic New",sans-serif;
+  color-scheme:light;
+}
+html,body{margin:0;padding:0;background:#efe9dd}
+body{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+.ks-sheet{box-shadow:none}
+.ks-sheet img{user-select:none;-webkit-user-drag:none}
+.ks-sheet .ks-read{margin:0}
+.ks-sheet .ks-read.ks-strip.ks-strip-big{font-size:calc(var(--mm)*4.2);line-height:1.9}
+
+/* 本文：素直な段組み。雑誌なので 3mm、行送り 1.72 */
+.body.ks-read{font-family:var(--font-mincho);font-size:calc(var(--mm)*3);line-height:1.72;color:var(--ink);text-align:justify;column-gap:calc(var(--mm)*5.5);column-fill:balance;padding:0;background:transparent;
+  text-shadow:0 0 calc(var(--mm)*.4) var(--paper),0 0 calc(var(--mm)*.8) var(--paper)}
+.body.ks-read.on-paper{text-shadow:none}
+.body p{margin:0;text-indent:1em;orphans:2;widows:2}
+.body p + p{margin-top:0}
+.body p.q{text-indent:0}
+.body .ln{font-family:var(--font-mono);font-weight:400;font-size:calc(var(--mm)*1.6);color:var(--spot-text);letter-spacing:.04em;margin-right:calc(var(--mm)*.8);vertical-align:.3em;text-indent:0}
+.body.box{background:var(--paper);padding:calc(var(--mm)*3.2) calc(var(--mm)*3.6);text-shadow:none}
+
+/* 章の題 */
+.hd.ks-read{background:transparent;padding:0;margin:0;font-family:var(--font-mincho);font-weight:700;font-size:calc(var(--mm)*7.4);line-height:1.15;letter-spacing:.04em;color:var(--ink);white-space:nowrap;
+  text-shadow:0 0 calc(var(--mm)*.6) var(--paper),0 0 calc(var(--mm)*1.2) var(--paper)}
+.hd small{display:block;font-family:var(--font-mono);font-weight:400;font-size:calc(var(--mm)*2);letter-spacing:.16em;color:var(--ink-soft);margin-bottom:calc(var(--mm)*1.6)}
+.hd.v{writing-mode:vertical-rl}
+
+/* 抜き出しの一文（コピー）。本文から一文をそのまま抜いて大きく。本文にも残す */
+.pull.ks-read{background:transparent;padding:0;font-family:var(--font-mincho);font-weight:800;font-size:calc(var(--mm)*6.6);line-height:1.45;letter-spacing:.02em;color:var(--ink);
+  text-shadow:0 0 calc(var(--mm)*.6) var(--paper),0 0 calc(var(--mm)*1.2) var(--paper)}
+.pull.v{writing-mode:vertical-rl}
+.pull.ink{background:var(--ink);color:var(--paper);text-shadow:none;padding:calc(var(--mm)*3) calc(var(--mm)*3.4)}
+
+/* 柱・ノンブル・刷り番号（等幅で小さく、外側の下に） */
+.run.ks-read{background:transparent;padding:0;font-family:var(--font-mono);font-size:calc(var(--mm)*1.9);letter-spacing:.12em;line-height:1.3;color:var(--ink);white-space:nowrap}
+.run.inv{color:var(--paper)}
+.seed.ks-read{cursor:pointer}
+.seed.ks-read:focus-visible{outline:calc(var(--mm)*.3) solid var(--accent);outline-offset:calc(var(--mm)*.6)}
+
+/* 図の説明（白い帯） */
+.ks-read.ks-strip{font-size:calc(var(--mm)*2.1)}
+.ks-strip a{color:inherit}
+
+/* 円く切った写真 */
+.ks-paste.round{border-radius:50%}
+
+/* 見開きの層：継ぎ目のテープ（紙片のテープと同じ見た目。刷り直しても動かない） */
+.sp-tape{position:absolute;z-index:var(--z-tape,4);height:calc(var(--mm)*5.6);background:var(--tape,rgba(221,211,180,.74));transform-origin:50% 50%;box-shadow:0 0 calc(var(--mm)*.3) rgba(0,0,0,.12);pointer-events:none}
+
+</style>
+</head>
+<body>
+<!-- この紙は bss/tools/build.py が bss/src/pages/003.js から作った。直すときは元の側を直して作り直す -->
+<article class="sheet" id="sheet" aria-label="BSS 0　初めてのBSS"></article>
+<script>
+/* @ds-bundle: {"format":4,"namespace":"Kasane","components":[{"name":"Sheet"},{"name":"Halftone"},{"name":"Marks"},{"name":"Codes"},{"name":"RepeatField"},{"name":"ReadPanel"},{"name":"EscapeBand"},{"name":"PastedPhoto"},{"name":"TilePrint"},{"name":"BrokenWord"},{"name":"DingbatText"},{"name":"BrushDrip"},{"name":"StringArt"},{"name":"Vesica"},{"name":"OverlapList"},{"name":"Accident"},{"name":"CardDeck"},{"name":"Ground"},{"name":"Pen"},{"name":"Strip"},{"name":"PhraseStack"}]} */
+/* 刷り重ね — 描画の部品。座標はすべて紙の上の mm。React は使わない。色は役割（paper, ink, spot, accent…）で呼び、手札（パレット）で差し替える */
+(function () {
+  'use strict';
+  var TAU = Math.PI * 2;
+
+  function cssv(name, fb) {
+    try { var v = getComputedStyle(document.documentElement).getPropertyValue(name).trim(); return v || fb; } catch (e) { return fb; }
+  }
+  /* 版の色。役割ごとの CSS 変数を、紙（el）か文書から読む。手札で差し替えられる */
+  var C = {};
+  var ROLES = ['paper', 'ink', 'ink-soft', 'spot', 'spot-text', 'accent', 'paper-on-ink', 'accent-on-ink', 'newsprint', 'tape'];
+  function readColors(el) {
+    var cs; try { cs = getComputedStyle(el || document.documentElement); } catch (e) { cs = null; }
+    var g = function (n, fb) { var v = cs ? cs.getPropertyValue(n).trim() : ''; return v || fb; };
+    C.paper = g('--paper', '#f3f1ea'); C.ink = g('--ink', '#141414'); C.soft = g('--ink-soft', '#4a4a48');
+    C.spot = g('--spot', '#d4462c'); C.spotText = g('--spot-text', '#b8371f'); C.accent = g('--accent', '#1f4fb0');
+    C.newsprint = g('--newsprint', '#e9e4d6');
+    return C;
+  }
+  readColors();
+  var F = {
+    mono: '"IBM Plex Mono",ui-monospace,monospace',
+    go: '"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",sans-serif',
+    min: '"Shippori Mincho B1","Hiragino Mincho ProN","Yu Mincho",serif',
+    brush: '"Yuji Boku","Shippori Mincho B1",serif',
+    hand: '"Yomogi","Zen Kaku Gothic New",sans-serif'
+  };
+
+  /* 刷り番号から決まる乱数（mulberry32）。同じ番号なら同じ刷り */
+  function rng(s) {
+    return function () { s |= 0; s = s + 0x6D2B79F5 | 0; var t = Math.imul(s ^ s >>> 15, 1 | s); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+  }
+  var pad = function (n, l) { return String(n).padStart(l, '0'); };
+
+  /* canvas を 1単位＝1mm にする */
+  function prep(cv, Wmm) {
+    var r = cv.getBoundingClientRect(); var d = Math.min(window.devicePixelRatio || 1, 2);
+    cv.width = Math.max(1, Math.round(r.width * d)); cv.height = Math.max(1, Math.round(r.height * d));
+    var g = cv.getContext('2d'); var s = r.width * d / Wmm; g.setTransform(s, 0, 0, s, 0, 0); g.clearRect(0, 0, Wmm, 1000); return g;
+  }
+
+  /* 文字。o: f 書体, wt 太さ, al 揃え, bl 基線, ls 字間(em), rot 回転, mir 鏡, a 濃度, bg 下地, stroke 袋, lw, c 色, it 斜体 */
+  function T(g, s, x, y, size, o) {
+    o = o || {}; g.save();
+    g.font = (o.it ? 'italic ' : '') + (o.wt || 400) + ' ' + size + 'px ' + (o.f || F.mono);
+    g.textAlign = o.al || 'left'; g.textBaseline = o.bl || 'alphabetic';
+    if (o.ls) { try { g.letterSpacing = (o.ls * size) + 'px'; } catch (e) {} }
+    g.translate(x, y); if (o.rot) g.rotate(o.rot); if (o.mir) g.scale(-1, 1); if (o.a != null) g.globalAlpha = o.a;
+    if (o.bg) { var w = g.measureText(s).width, p = size * .25, x0 = o.al === 'center' ? -w / 2 : o.al === 'right' ? -w : 0; g.fillStyle = o.bg; g.fillRect(x0 - p, -size * .92, w + p * 2, size * 1.2); }
+    if (o.stroke) { g.strokeStyle = o.c || C.ink; g.lineWidth = o.lw || .2; g.strokeText(s, 0, 0); } else { g.fillStyle = o.c || C.ink; g.fillText(s, 0, 0); }
+    g.restore();
+  }
+  /* 縦組み。each(ch,i) で字ごとに {dx,dy,rot,o} を返せる。戻り値は次の y */
+  function V(g, s, x, y, size, o) {
+    o = o || {}; var step = size * (o.lh || 1.1), i = 0;
+    Array.from(s).forEach(function (ch) {
+      var cx = x, cy = y + i * step + size / 2, rot = 0, ex = o.each ? (o.each(ch, i) || {}) : {};
+      if ('ー〜—'.indexOf(ch) >= 0) rot = Math.PI / 2;
+      if ('、。'.indexOf(ch) >= 0) { cx += size * .55; cy -= size * .55; }
+      T(g, ch, cx + (ex.dx || 0), cy + (ex.dy || 0), size, Object.assign({}, o, { al: 'center', bl: 'middle', rot: rot + (ex.rot || 0) }, ex.o || {}));
+      i++;
+    });
+    return y + i * step;
+  }
+  function line(g, x1, y1, x2, y2, lw, col) { g.strokeStyle = col || C.ink; g.lineWidth = lw || .1; g.beginPath(); g.moveTo(x1, y1); g.lineTo(x2, y2); g.stroke(); }
+  function clip(g, x, y, w, h, fn) { g.save(); g.beginPath(); g.rect(x, y, w, h); g.clip(); fn(); g.restore(); }
+
+  /* ── Halftone：網点。f(x,y) が 0–1 の網％ ── */
+  function Halftone(g, x0, y0, w, h, p, deg, f, col) {
+    var a = deg * Math.PI / 180, ca = Math.cos(a), sa = Math.sin(a), cx = x0 + w / 2, cy = y0 + h / 2, Rr = Math.hypot(w, h) / 2 + p;
+    g.save(); g.beginPath(); g.rect(x0, y0, w, h); g.clip();
+    g.fillStyle = col || C.ink; g.beginPath();
+    for (var v = -Rr; v <= Rr; v += p) for (var u = -Rr; u <= Rr; u += p) {
+      var x = cx + u * ca - v * sa, y = cy + u * sa + v * ca;
+      if (x < x0 - p || x > x0 + w + p || y < y0 - p || y > y0 + h + p) continue;
+      var c = f(x, y); if (c <= .02) continue;
+      var r = p * .58 * Math.sqrt(Math.min(1, c)); g.moveTo(x + r, y); g.arc(x, y, r, 0, TAU);
+    }
+    g.fill(); g.restore();
+  }
+
+  /* ── Marks：トンボ・断ちトンボ・寸法線・格子 ── */
+  var Marks = {
+    grid: function (g, x0, y0, x1, y1, st, a) { g.save(); g.globalAlpha = a == null ? .15 : a; for (var x = x0; x <= x1 + 1e-6; x += st) line(g, x, y0, x, y1, .08); for (var y = y0; y <= y1 + 1e-6; y += st) line(g, x0, y, x1, y, .08); g.restore(); },
+    tombo: function (g, x, y, s, col) { s = s || 5; line(g, x - s / 2, y, x + s / 2, y, .1, col); line(g, x, y - s / 2, x, y + s / 2, .1, col); g.strokeStyle = col || C.ink; g.lineWidth = .1; g.beginPath(); g.arc(x, y, s * .22, 0, TAU); g.stroke(); },
+    trims: function (g, W, H, i, l) { i = i || 4; l = l || 5; [[i, i, 1, 1], [W - i, i, -1, 1], [i, H - i, 1, -1], [W - i, H - i, -1, -1]].forEach(function (q) { line(g, q[0] - q[2] * 2, q[1], q[0] + q[2] * l, q[1], .1); line(g, q[0], q[1] - q[3] * 2, q[0], q[1] + q[3] * l, .1); }); },
+    /* 見開きの標準：四隅の断ちトンボ＋辺の中点のトンボ */
+    standard: function (g, W, H) { Marks.trims(g, W, H); [[W / 2, 5], [W / 2, H - 5], [4, H / 2], [W - 4, H / 2]].forEach(function (p) { Marks.tombo(g, p[0], p[1]); }); },
+    dim: function (g, x1, y1, x2, y2, label, col) {
+      col = col || C.ink; var a = Math.atan2(y2 - y1, x2 - x1), nx = -Math.sin(a) * 1.1, ny = Math.cos(a) * 1.1;
+      line(g, x1, y1, x2, y2, .1, col); line(g, x1 - nx, y1 - ny, x1 + nx, y1 + ny, .1, col); line(g, x2 - nx, y2 - ny, x2 + nx, y2 + ny, .1, col);
+      var ang = a; if (ang > Math.PI / 2) ang -= Math.PI; if (ang < -Math.PI / 2) ang += Math.PI;
+      T(g, label, (x1 + x2) / 2, (y1 + y2) / 2, 1.5, { al: 'center', bl: 'middle', rot: ang, bg: C.paper, c: col });
+    }
+  };
+
+  /* ── Codes：バーコード・色玉・判子・型番・タイムコード ── */
+  var Codes = {
+    barcode: function (g, x, y, w, h, R, label) {
+      line(g, x, y, x, y + h + 1.4, .28); line(g, x + .6, y, x + .6, y + h + 1.4, .28); var cx = x + 1.4, k = 0;
+      while (cx < x + w - 1.6) { var bw = (1 + Math.floor(R() * 3)) * .26; if (k % 2 === 0) { g.fillStyle = C.ink; g.fillRect(cx, y, bw, h); } cx += bw; k++; }
+      line(g, x + w - .6, y, x + w - .6, y + h + 1.4, .28); line(g, x + w, y, x + w, y + h + 1.4, .28);
+      T(g, label, x + w / 2, y + h + 2.6, 1.7, { al: 'center', ls: .35 });
+    },
+    /* 色玉：墨100・墨60・墨25・朱100・朱40・藍100・藍×朱・墨×朱。k=墨版, r=朱版 */
+    colorbar: function (k, r, x, y, c) {
+      var cells = ['k', 'k60', 'k25', 'r', 'r40', 'ai', 'ai+r', 'k+r'];
+      cells.forEach(function (t, i) {
+        var X = x + i * c;
+        if (t === 'k' || t === 'k+r') { k.fillStyle = C.ink; k.fillRect(X, y, c, c); }
+        if (t === 'k60') Halftone(k, X, y, c, c, .7, 45, function () { return .6; });
+        if (t === 'k25') Halftone(k, X, y, c, c, .7, 45, function () { return .25; });
+        if (t === 'r' || t === 'ai+r' || t === 'k+r') { r.fillStyle = C.spot; r.fillRect(X, y, c, c); }
+        if (t === 'r40') Halftone(r, X, y, c, c, .7, 15, function () { return .4; }, C.spot);
+        if (t === 'ai' || t === 'ai+r') { k.fillStyle = C.accent; k.fillRect(X, y, c, c); }
+      });
+      k.strokeStyle = C.ink; k.lineWidth = .1; k.strokeRect(x, y, c * cells.length, c);
+    },
+    stamp: function (r, x, y, rad, ch) { r.strokeStyle = C.spot; r.lineWidth = rad * .09; r.beginPath(); r.arc(x, y, rad, 0, TAU); r.stroke(); T(r, ch, x, y + rad * .05, rad * 1.15, { f: F.min, wt: 700, al: 'center', bl: 'middle', c: C.spot }); },
+    model: function (n) { return 'RFC–' + pad(n, 3); },
+    timecode: function (f) { return 'TC ' + pad(Math.floor(f / 86400), 2) + ':' + pad(Math.floor(f / 1440) % 60, 2) + ':' + pad(Math.floor(f / 24) % 60, 2) + ':' + pad(f % 24, 2); }
+  };
+
+  /* ── RepeatField：反復と変種 ── */
+  var RepeatField = {
+    /* 横組みの格子。variants: {index: function(g,x,y)} で変種の区画だけ描き方を変える */
+    grid: function (g, o) {
+      var n = o.cols * o.rows;
+      for (var i = 0; i < n; i++) {
+        var x = o.x + (i % o.cols) * o.dx, y = o.y + Math.floor(i / o.cols) * o.dy;
+        if (o.variants && o.variants[i]) { o.variants[i](g, x, y); continue; }
+        T(g, o.text, x, y, o.size, { f: o.f || F.go, wt: o.wt || 700, a: o.a });
+      }
+    },
+    /* 縦の列。breakCol の列は字が破れる、accentCol の列は朱版に刷る */
+    columns: function (k, r, R, o) {
+      for (var c = 0; c < o.cols; c++) {
+        var x = o.x + c * o.dx, y = o.y + (c % 2) * (o.stagger || 0), acc = c === o.accentCol, g = acc ? r : k;
+        while (y < o.yEnd) {
+          y = V(g, o.text, x, y, o.size, { f: F.go, wt: acc ? 700 : 400, c: acc ? C.spot : C.ink, lh: 1.12,
+            each: c === o.breakCol ? function () { return R() < .45 ? { dx: (R() - .5) * 3, dy: (R() - .5) * 2, rot: (R() - .5) * 1.6 } : null; } : null }) + (o.gap || 4);
+        }
+      }
+    },
+    /* 変種の区画を 1/16–1/8 の範囲で選ぶ */
+    pick: function (R, n, count) { var s = {}; while (Object.keys(s).length < count) s[Math.floor(R() * n)] = 1; return Object.keys(s).map(Number); }
+  };
+
+  /* ── ReadPanel / EscapeBand：要素を作って紙に置く（mm） ── */
+  function place(el, x, y, w, h, rot) {
+    el.style.left = 'calc(var(--mm)*' + x + ')'; el.style.top = 'calc(var(--mm)*' + y + ')';
+    if (w != null) el.style.width = 'calc(var(--mm)*' + w + ')'; if (h != null) el.style.height = 'calc(var(--mm)*' + h + ')';
+    if (rot) el.style.transform = 'rotate(' + rot + 'deg)';
+    return el;
+  }
+  function ReadPanel(sheet, o) { var el = document.createElement('div'); el.className = 'ks-read' + (o.className ? ' ' + o.className : ''); el.innerHTML = o.html; sheet.appendChild(el); return place(el, o.x, o.y, o.w, o.h); }
+  function EscapeBand(sheet, o) { var el = document.createElement('div'); el.className = 'ks-esc' + (o.className ? ' ' + o.className : ''); el.innerHTML = o.html || ''; sheet.appendChild(el); return place(el, o.x, o.y, o.w, o.h, o.rot); }
+
+  /* ── PastedPhoto：data-x/y/w/ar/rot/tape を持つ子を貼る。刷るたびに角度と位置が少し動き、テープを貼り直す ── */
+  var PastedPhoto = {
+    layout: function (sheet, R) {
+      Array.prototype.forEach.call(sheet.querySelectorAll('.ks-tape'), function (t) { t.remove(); });
+      Array.prototype.forEach.call(sheet.querySelectorAll('[data-x]'), function (el) {
+        var ds = el.dataset, x = +ds.x, y = +ds.y, w = +ds.w, h = ds.h ? +ds.h : w / (+ds.ar || 1), fix = !!ds.fix;
+        var rot = (+ds.rot || 0) + (fix ? 0 : (R() - .5) * 2.2), dx = fix ? 0 : (R() - .5) * 2, dy = fix ? 0 : (R() - .5) * 2;
+        place(el, x + dx, y + dy, w, h); el.style.transform = 'rotate(' + rot + 'deg)';
+        if (el.classList.contains('ks-tiles')) TilePrint(el, R);
+        var n = +ds.tape || 0, spots = [[0, 0, -38], [1, 0, 38], [.5, 0, -4], [0, 1, 36], [1, 1, -36]];
+        spots.slice().sort(function () { return R() - .5; }).slice(0, n).forEach(function (s) {
+          var t = document.createElement('div'); t.className = 'ks-tape'; var tw = 13 + R() * 9, pts = [], i;
+          for (i = 0; i <= 6; i++) pts.push((R() * 7).toFixed(1) + '% ' + (i / 6 * 100).toFixed(1) + '%');
+          for (i = 6; i >= 0; i--) pts.push((93 + R() * 7).toFixed(1) + '% ' + (i / 6 * 100).toFixed(1) + '%');
+          place(t, x + dx + s[0] * w - tw / 2, y + dy + s[1] * h - 2.8, tw);
+          t.style.transform = 'rotate(' + (s[2] + rot + (R() - .5) * 14) + 'deg)'; t.style.clipPath = 'polygon(' + pts.join(',') + ')';
+          sheet.appendChild(t);
+        });
+      });
+    }
+  };
+
+  /* ── TilePrint：一語を A4 4枚に分けて刷り、印刷できない縁ごと貼る（カーソン） ── */
+  function TilePrint(el, R) {
+    var W = +el.dataset.w, H = +el.dataset.h, word = el.dataset.word, m = 2.2; el.innerHTML = '';
+    for (var ri = 0; ri < 2; ri++) for (var c = 0; c < 2; c++) {
+      var t = document.createElement('div'); t.className = 'ks-tile';
+      place(t, c * W / 2 - m + (R() - .5) * 2.6, ri * H / 2 - m + (R() - .5) * 2.2, W / 2 + m * 2, H / 2 + m * 2, (R() - .5) * 2.4);
+      t.style.zIndex = String(1 + Math.floor(R() * 4));
+      var pr = document.createElement('div'); pr.className = 'ks-tile-pr'; var sp = document.createElement('span'); sp.textContent = word; sp.setAttribute('aria-hidden', 'true');
+      place(sp, -c * W / 2, -ri * H / 2, W, H); sp.style.fontSize = 'calc(var(--mm)*' + (H * .96) + ')';
+      pr.appendChild(sp); t.appendChild(pr); el.appendChild(t);
+    }
+  }
+
+  /* ── BrokenWord：一字ずつ、字間をばらばらに送る（カーソン）。戻り値は終わりの x ── */
+  function BrokenWord(g, s, x, y, size, R, o) {
+    o = o || {}; g.save(); g.font = (o.wt || 900) + ' ' + size + 'px ' + (o.f || F.go); var xx = x;
+    Array.from(s).forEach(function (ch) { var w = g.measureText(ch).width; T(g, ch, xx, y + (R() - .5) * size * .08, size, Object.assign({ f: F.go, wt: 900 }, o)); xx += w + (R() * .42 - .12) * size; });
+    g.restore(); return xx;
+  }
+
+  /* ── DingbatText：一字に記号を一つ当てる。同じ字には同じ記号 ── */
+  var DING = '✱✲✳✴✵✶✷✸✹✺✻✼✽✾✿❀❁❂❃❄❅❆❇❈❉❊❋◐◑◒◓◔◕◖◗◆◇◈';
+  function DingbatText(s) { return Array.from(s).map(function (ch) { return '、。'.indexOf(ch) >= 0 ? ch : DING[(ch.codePointAt(0) * 7) % DING.length]; }).join(''); }
+
+  /* ── BrushDrip：筆の書体で縦に書き、字の下から垂れを落とす ── */
+  /* k は垂れの長さの倍率（筆の字 26mm で 1） */
+  function drips(g, R, x, y, w, n, col, k) {
+    g.fillStyle = col || C.spot; k = k || 1;
+    for (var i = 0; i < n; i++) { var dx = x + (R() - .5) * w, len = (3 + R() * R() * 30) * k, lw = (.3 + R() * .9) * Math.max(.5, k); g.fillRect(dx - lw / 2, y, lw, len); g.beginPath(); g.arc(dx, y + len, lw * .9, 0, TAU); g.fill(); }
+  }
+  function BrushDrip(g, R, o) {
+    var step = o.size * (o.lh || 1.0);
+    Array.from(o.text).forEach(function (ch, i) { var y = o.y + i * step; T(g, ch, o.x, y + o.size * .85, o.size, { f: F.brush, al: 'center', c: o.color || C.spot }); drips(g, R, o.x, y + o.size * .92, o.size * .6, 2 + Math.floor(R() * 3), o.color || C.spot, o.size / 26); });
+  }
+
+  /* ── StringArt：上の極と下の極から、一文の一字ずつへ線を結ぶ（Kamikene『INORI EP』） ── */
+  function StringArt(k, o) {
+    var row = o.row, fs = o.size || 2.15, cw = fs * .6, cx = o.cx, x0 = cx - row.length * cw / 2, ry = o.y, tp = o.top, bp = o.bottom, sp = o.spread || 1.65;
+    k.save(); k.globalAlpha = .75; k.strokeStyle = C.ink; k.lineWidth = .1;
+    Array.from(row).forEach(function (ch, i) {
+      if (ch === ' ') return; var x = x0 + i * cw + cw / 2, c = cx + (x - cx) * sp;
+      k.beginPath(); k.moveTo(tp[0], tp[1]); k.quadraticCurveTo(c, ry - (ry - tp[1]) * .6, x, ry - fs * 1.1); k.stroke();
+      k.beginPath(); k.moveTo(x, ry + fs * .55); k.quadraticCurveTo(c, ry + (bp[1] - ry) * .6, bp[0], bp[1]); k.stroke();
+    });
+    k.restore(); k.fillStyle = C.ink; [tp, bp].forEach(function (p) { k.beginPath(); k.arc(p[0], p[1], .9, 0, TAU); k.fill(); });
+    T(k, row, x0, ry, fs, { bg: C.paper });
+    /* 規則から外れる一本 */
+    if (o.deviant) { var g = o.deviant.g || k; g.strokeStyle = o.deviant.color || C.spot; g.lineWidth = .4; g.beginPath(); g.moveTo(bp[0], bp[1]); var t = o.deviant.to; g.bezierCurveTo(bp[0] + 46, bp[1] + 10, t[0] - 72, t[1] + 64, t[0], t[1]); g.stroke(); }
+  }
+
+  /* ── Vesica：二つの円を重ね、重なり（レンズ）を返す。d＝中心間の距離 ── */
+  function Vesica(cx, cy, r, d) {
+    var half = Math.sqrt(r * r - d * d / 4);
+    return { a: [cx - d / 2, cy], b: [cx + d / 2, cy], r: r, lens: { x: cx - (r - d / 2), y: cy - half, w: 2 * r - d, h: 2 * half } };
+  }
+
+  /* ── OverlapList：行を重ねた一覧の各行から、罫を下端の外まで垂らす ── */
+  var OverlapList = {
+    rules: function (r, xs, y0s, yEnd, colors) { xs.forEach(function (x, i) { line(r, x, y0s[i], x, yEnd, .32, (colors && colors[i]) || C.spot); }); }
+  };
+
+  /* ── Accident：汚れ・コピーの筋・ノドの影・鏡文字 ── */
+  var Accident = {
+    smudge: function (g, R, x, y, rad) {
+      g.save(); var gr = g.createRadialGradient(x, y, 0, x, y, rad); gr.addColorStop(0, 'rgba(20,20,20,.5)'); gr.addColorStop(.6, 'rgba(20,20,20,.16)'); gr.addColorStop(1, 'rgba(20,20,20,0)');
+      g.fillStyle = gr; g.beginPath(); g.ellipse(x, y, rad, rad * (.4 + R() * .4), R() * Math.PI, 0, TAU); g.fill(); g.fillStyle = C.ink;
+      for (var i = 0; i < 60; i++) { var a = R() * TAU, d = rad * (.6 + R() * .9); g.globalAlpha = .2 + R() * .5; g.beginPath(); g.arc(x + Math.cos(a) * d, y + Math.sin(a) * d, .08 + R() * .35, 0, TAU); g.fill(); }
+      g.restore();
+    },
+    streak: function (g, R, x, H) { g.save(); g.fillStyle = C.ink; for (var y = 0; y < H; y += .4) { g.globalAlpha = R() * .35; g.fillRect(x + (R() - .5) * .3, y, .15 + R() * .3, .4); } g.restore(); },
+    gutter: function (g, cx, H) {
+      cx = cx || 148; H = H || 210; var gr = g.createLinearGradient(cx - 12, 0, cx + 12, 0);
+      gr.addColorStop(0, 'rgba(20,20,20,0)'); gr.addColorStop(.46, 'rgba(20,20,20,.38)'); gr.addColorStop(.5, 'rgba(20,20,20,.6)'); gr.addColorStop(.54, 'rgba(20,20,20,.38)'); gr.addColorStop(1, 'rgba(20,20,20,0)');
+      g.fillStyle = gr; g.fillRect(cx - 12, 0, 24, H);
+    },
+    mirror: function (g, s, x, y, size, o) { T(g, s, x, y, size, Object.assign({ f: F.go, wt: 900, mir: 1, a: .09 }, o || {})); }
+  };
+
+  /* ── Sheet：紙・墨版・朱版・粒子・版ずれ。draw(c) に {k, r, R, W, H, on, seed, sheet} を渡す ── */
+  var FILTERS = '<svg width="0" height="0" style="position:absolute" aria-hidden="true">' +
+    '<filter id="ks-grainf" x="0" y="0" width="100%" height="100%"><feTurbulence class="ks-turb" type="fractalNoise" baseFrequency=".85" numOctaves="2" seed="7" stitchTiles="stitch"/>' +
+    '<feColorMatrix type="matrix" values="0 0 0 0 .08  0 0 0 0 .08  0 0 0 0 .08  0 0 0 -1.25 .78"/></filter>' +
+    '<filter id="ks-rough"><feTurbulence class="ks-turb" type="fractalNoise" baseFrequency=".045" numOctaves="2" seed="3" result="n"/>' +
+    '<feDisplacementMap in="SourceGraphic" in2="n" scale="4" xChannelSelector="R" yChannelSelector="G"/></filter></svg>';
+  var sheets = [];
+  function Sheet(el, o) {
+    o = o || {};
+    if (!document.getElementById('ks-grainf')) document.body.insertAdjacentHTML('beforeend', FILTERS);
+    var fm = o.format ? Formats[o.format] : null;
+    var W = o.w || (fm && fm.w) || 148, H = o.h || (fm && fm.h) || 210, K = o.k || (fm && fm.k) || 1;
+    var pal = o.palette ? usePalette(el, o.palette) : null;
+    /* 暗い紙（mode: dark）では、インクを不透明として光を足して重ねる */
+    el.classList.toggle('ks-dark', !!(o.dark || (pal && pal.mode === 'dark')));
+    el.classList.add('ks-sheet'); el.style.setProperty('--mm-w', W); el.style.aspectRatio = W + ' / ' + H;
+    var k = el.querySelector('canvas.ks-k'), r = el.querySelector('canvas.ks-r');
+    if (!k) { k = document.createElement('canvas'); k.className = 'ks-k'; k.setAttribute('aria-hidden', 'true'); el.insertBefore(k, el.firstChild); }
+    if (!r) { r = document.createElement('canvas'); r.className = 'ks-r'; r.setAttribute('aria-hidden', 'true'); k.after(r); }
+    if (!el.querySelector('svg.ks-grain')) el.insertAdjacentHTML('beforeend', '<svg class="ks-grain" aria-hidden="true"><rect width="100%" height="100%" filter="url(#ks-grainf)"/></svg>');
+    var on = Object.assign({ 1: true, 2: true, 3: true, 4: true, 5: true, 6: true }, o.layers || {});
+    var api = { el: el, W: W, H: H, K: K, on: on, seed: o.seed != null ? o.seed : (Math.random() * 1e9) >>> 0 };
+    api.render = function (seed) {
+      if (seed != null) api.seed = seed; readColors(el);
+      for (var n = 1; n <= 6; n++) el.classList.toggle('ks-off-' + n, !on[n]);
+      el.classList.toggle('ks-misreg', !!on[6]);
+      var R = rng(api.seed);
+      el.style.setProperty('--rx', ((R() - .5) * 1.4).toFixed(2)); el.style.setProperty('--ry', ((R() - .5) * 1.4).toFixed(2));
+      PastedPhoto.layout(el, rng(api.seed + 104729));
+      var kg = prep(k, W), rg = prep(r, W);
+      if (o.draw) o.draw({ k: kg, r: rg, R: R, W: W, H: H, K: K, on: on, seed: api.seed, sheet: el });
+    };
+    var t; if (window.ResizeObserver) new ResizeObserver(function () { clearTimeout(t); t = setTimeout(function () { api.render(); }, 120); }).observe(el);
+    sheets.push(api); api.render();
+    if (document.fonts) {
+      var fams = ['900 10px "Zen Kaku Gothic New"', '700 10px "Zen Kaku Gothic New"', '400 10px "Zen Kaku Gothic New"', '400 10px "IBM Plex Mono"', 'italic 400 10px "IBM Plex Mono"', '400 10px "Shippori Mincho B1"', '700 10px "Shippori Mincho B1"', '400 10px "Yuji Boku"', '400 10px "Yomogi"'];
+      var txt = o.fontText || '偶然のためのリズム差異の配置習慣を作れ、ただし木のように固めるな消せない拍六段ÁNGEL MUSA RFC Δ≈×→0123456789';
+      Promise.all(fams.map(function (f) { return document.fonts.load(f, txt); })).catch(function () {}).then(function () { return document.fonts.ready; }).then(function () { api.render(); });
+    }
+    return api;
+  }
+  /* すべての紙を新しい刷り番号で刷り直す */
+  function reprint(seed) { var s = seed != null ? seed : (Math.random() * 1e9) >>> 0; sheets.forEach(function (a, i) { a.render(s + i * 7919); }); return s; }
+
+
+  /* ── 判型。k は記号・線・余白の倍率（A5＝1、ほかは √(面積÷A5の面積)。見開きは A5 と同じ紙なので 1） ── */
+  var Formats = {
+    'zine-a5': { w: 148, h: 210, k: 1, name: '誌面 A5（片頁・表紙）' },
+    'zine-spread': { w: 296, h: 210, k: 1, name: '誌面 A5 見開き' },
+    'poster-a3': { w: 297, h: 420, k: 2, name: 'ポスター A3' },
+    'poster-a2': { w: 420, h: 594, k: 2.83, name: 'ポスター A2' },
+    'poster-b2': { w: 515, h: 728, k: 3.47, name: 'ポスター B2' },
+    'magazine-a4': { w: 210, h: 297, k: 1, name: '雑誌 A4（片頁）。手に持って読むので k は 1' },
+    'magazine-spread': { w: 420, h: 297, k: 1, name: '雑誌 A4 見開き' },
+    'tanka-card': { w: 100, h: 148, k: .69, name: '短歌コラージュ はがき' },
+    'tanka-square': { w: 182, h: 182, k: 1.03, name: '短歌コラージュ 正方形' },
+    'tanka-tanzaku': { w: 60, h: 360, k: .83, name: '短歌コラージュ 短冊' }
+  };
+
+  /* ── 手札（cards/cards.json の写し。手札を足したらここも書き換える） ── */
+  var Cards = /*CARDS*/{"version": 5, "palettes": [{"id": "P01", "name": "朱と藍", "added": "2026-10-07", "from": "偶然のためのリズム 貼り込み版（https://claude.ai/artifact/JBuVKdb5vNxWnSWwn1wwXD）", "why": "本人が「素晴らしい出来」と言った最初の作品の色。墨の物量に朱の大きな形を重ね刷りし、藍は外れる一点だけ。", "colors": {"paper": "#f3f1ea", "ink": "#141414", "ink-soft": "#4a4a48", "spot": "#d4462c", "spot-text": "#b8371f", "accent": "#1f4fb0", "paper-on-ink": "#efece3", "accent-on-ink": "#8fa6e0", "newsprint": "#e9e4d6", "tape": "rgba(221,211,180,0.74)"}, "ratio": {"ink": "55〜65%（網点・記号・逃げ場を含む）", "spot": "15〜25%（巨大な一字、円、垂れ、判子）", "accent": "3%以下（外れる一点と色玉）", "paper": "残り"}, "overprint": "特色（朱）は乗算。墨の上では黒に沈み、網点の上ではモアレ、紙片の上では赤く出る。", "contrast": "spot は paper の上で 3.9:1。小さな文字は spot-text（5.2:1）。"}, {"id": "P02", "name": "夜と黄", "added": "2026-10-07", "from": "ソネットと場違い（https://claude.ai/artifact/BnURrTY5nb3BNK7hcMipVQ）", "mode": "dark", "why": "作った人の言葉：「気に入った！特に青い点がこのポスターの良いところだ。コンセプトをよく汲み取れている。」 黒い紙に白と黄の不透明インク。外れる一点の青（遠い月）がいちばん小さく、いちばん効いている。", "colors": {"paper": "#0f1216", "ink": "#e7e9e6", "ink-soft": "#9aa1a8", "spot": "#f3d21a", "spot-text": "#f3d21a", "accent": "#4a86ff", "paper-on-ink": "#0f1216", "accent-on-ink": "#1d4fb8", "newsprint": "#1c2127", "tape": "rgba(231,233,230,0.2)"}, "ratio": {"paper": "70〜80%（黒い紙。空きと夜）", "ink": "10〜15%（白の網点、鏡、詩、記号）", "spot": "8〜12%（黄の円と小さな瞳）", "accent": "点一つ（0.1%未満）。外れる一点"}, "overprint": "暗い紙なのでインクは不透明として扱い、特色版と刷った像はスクリーン（光を足す）で重ねる。黄は黒の上でいちばん強く、白い網点の上では白に飛ぶ。", "contrast": "黒い紙の上で：白 15.4:1、灰 7.2:1、黄 12.6:1、青 5.5:1。黄はそのまま文字にも使える。"}, {"id": "P03", "name": "ピンクと白", "added": "2026-10-07", "from": "ミニコラム「色気＝優しさ、快楽＝振動」4頁版（https://claude.ai/artifact/WxTp4fk7nsXLk4F3LfBVpM）", "why": "作った人の言葉：「めちゃくちゃ良くなっている。」「色はいい。」「観覧車もいいが特にいいのはダンスの足形。」「コピー的な強い文章が強調されているのも良い」「全体的に落ち着いているので密度を少し上げるともっと良くなりそう」（3頁目の大きな余白は「退屈」として、ジェットコースターと抜き出しで埋めた） 温かい白の紙に、プラムの墨、ピンクの特色、マゼンタのアクセント。優しい雰囲気に少しだけ色気を足す色。", "colors": {"paper": "#fffaf7", "ink": "#2a1520", "ink-soft": "#7a5f6b", "spot": "#ff8db0", "spot-text": "#c2185b", "accent": "#e0005e", "paper-on-ink": "#fffaf7", "accent-on-ink": "#ff6aa0", "newsprint": "#f6ece8", "tape": "rgba(240,214,214,0.7)"}, "ratio": {"paper": "60〜70%", "ink": "15〜20%（本文と線）", "spot": "12〜18%（観覧車の円、光、足型、波）", "accent": "一語だけ（外れる一点の「快楽」）"}, "overprint": "明るい紙なので、ピンクは乗算で重ねる。墨の線の上では墨が勝ち、白い紙の上ではやわらかく光る。", "contrast": "紙の上で：墨 16.5:1、灰 5.5:1、濃いピンク（見出し・抜き出し）5.7:1、マゼンタ 4.7:1。ピンク #ff8db0 は 2.1:1 なので文字にしない。墨ベタの上のピンク #ff6aa0 は 6.4:1。"}, {"id": "P04", "name": "投影機の青と赤ペン", "added": "2026-10-08", "from": "短編「プラネタリウムの夢」二稿（https://claude.ai/artifact/EzRiK5S9iDTWnZbTVmfri1）", "why": "作った人の言葉：「めちゃくちゃ良い！！！！トンマナは完全にこっちの方が俺の望んでいたものだ。」「１個目もかっこいいが、どうしてもデザインの範疇であまり飛び抜けた良さがなかったが、今回のはすぐに意味ができないような表現がなされていて素晴らしいと思う。」「この生っぽさも再現性を持てるようにルールを足して。色もいいと思う」（2026-10-08） 温かい紙に、地の写真を青い墨一色で刷り、紫のインクの汚れと、ボールペンの青・赤ペンで書き込む。写真の色と、作業の紙の色。", "colors": {"paper": "#efe9dd", "ink": "#14161c", "ink-soft": "#4d5160", "spot": "#6034a0", "spot-text": "#5a2e96", "accent": "#c81f26", "paper-on-ink": "#efe9dd", "accent-on-ink": "#ff6a5c", "newsprint": "#e6dfd0", "tape": "rgba(240,232,214,0.72)"}, "extra": {"photo": "#161e40", "pen": "#1d3fae"}, "ratio": {"photo": "地の写真一枚（見開きいっぱい、青い墨一色）。暗い所は地平線の下の帯", "paper": "写真の明るい所と、白い帯", "ink": "本文と一句（墨）", "spot": "紫のインクの汚れ 5〜10%（文字の上にも透けて乗る）", "accent": "赤ペンの×と書き込みだけ"}, "overprint": "地の写真は tools/make_raw.py の mono で紙と青い墨の二色に刷る。紫の汚れは乗算で、文字の上にも乗る。赤ペンと青のボールペンは特色版（乗算）に描き、紙片の上にも乗る。暗い帯の上の文字は紙の色に反転する。", "contrast": "紙の上で：墨 15.0:1、灰 6.5:1、紫の文字 7.7:1、赤 4.7:1、青のボールペン 7.3:1。写真のドームの明るい所（紙の 78%）の上で墨 9.6:1。赤は作ったとき #d8262b（4.1:1）だったので、手札では #c81f26 に暗くした。墨ベタの上の赤 #ff6a5c は 6.4:1。"}], "compositions": [{"id": "C01", "name": "タイル題字と下の帯", "orientation": "portrait", "from": "偶然のためのリズム 貼り込み版（https://claude.ai/artifact/JBuVKdb5vNxWnSWwn1wwXD） 表紙", "axis": "書体（ゴシック900と等幅だけ）", "gradient": "右上がいちばん密、左下へ抜ける", "uses": "誌面の表紙、ポスター（題が主役のとき）", "zones": [{"role": "repeat", "x": 45, "y": 14, "w": 54, "h": 58}, {"role": "paste", "x": 3, "y": 10, "w": 94, "h": 11, "rot": -3}, {"role": "figure", "x": 62, "y": 28, "w": 27, "h": 30, "label": "ヴェシカ"}, {"role": "read", "x": 8, "y": 28, "w": 32, "h": 19}, {"role": "paste", "x": 5, "y": 53, "w": 91, "h": 22, "label": "タイル題字"}, {"role": "spot", "x": 60, "y": 57, "w": 30, "h": 26, "label": "＝"}, {"role": "accent", "x": 50, "y": 46, "w": 3, "h": 2}, {"role": "escape", "x": 0, "y": 85, "w": 100, "h": 15}]}, {"id": "C02", "name": "二つの格子", "orientation": "landscape", "from": "偶然のためのリズム 貼り込み版（https://claude.ai/artifact/JBuVKdb5vNxWnSWwn1wwXD） p.2–3", "axis": "9×9 の格子（左右共通）", "gradient": "左が密、右へ抜ける", "uses": "比較を見せる見開き、二連のポスター", "zones": [{"role": "escape", "x": 0, "y": 0, "w": 50, "h": 17}, {"role": "figure", "x": 5, "y": 21, "w": 40, "h": 57, "label": "格子"}, {"role": "figure", "x": 55, "y": 21, "w": 40, "h": 57, "label": "ずれた格子"}, {"role": "spot", "x": 25, "y": 50, "w": 50, "h": 50, "label": "巨大な数字"}, {"role": "paste", "x": 32, "y": 14, "w": 15, "h": 70, "label": "切り抜き"}, {"role": "paste", "x": 57, "y": 46, "w": 40, "h": 32, "label": "連続写真"}, {"role": "paste", "x": 51, "y": 1, "w": 33, "h": 6}, {"role": "broken", "x": 72, "y": 4, "w": 25, "h": 21}, {"role": "read", "x": 5, "y": 82, "w": 31, "h": 12}, {"role": "read", "x": 55, "y": 82, "w": 31, "h": 12}, {"role": "accent", "x": 80, "y": 50, "w": 2, "h": 3}]}, {"id": "C03", "name": "反復の列と囲み本文", "orientation": "landscape", "from": "偶然のためのリズム 貼り込み版（https://claude.ai/artifact/JBuVKdb5vNxWnSWwn1wwXD） p.4–5", "axis": "網点のピッチ", "gradient": "右頁の中央がいちばん密", "uses": "引用を一つ読ませる見開き、短歌コラージュ（列を歌の語の反復に）", "zones": [{"role": "repeat", "x": 5, "y": 4, "w": 41, "h": 92, "label": "縦の列"}, {"role": "read", "x": 13.5, "y": 51, "w": 25.5, "h": 33, "label": "囲み"}, {"role": "paste", "x": 24, "y": 42, "w": 24, "h": 10, "label": "記号文の紙片"}, {"role": "figure", "x": 50, "y": 0, "w": 50, "h": 81, "label": "網点の像"}, {"role": "paste", "x": 54, "y": 63, "w": 41, "h": 7}, {"role": "escape", "x": 50, "y": 81, "w": 50, "h": 19}]}, {"id": "C04", "name": "一点透視の段", "orientation": "landscape", "from": "偶然のためのリズム 貼り込み版（https://claude.ai/artifact/JBuVKdb5vNxWnSWwn1wwXD） p.8–9", "axis": "消失点（ノドに一つ）", "gradient": "消失点に向かって密", "uses": "手順・段階を見せる見開き、縦長に回してポスター", "zones": [{"role": "figure", "x": 0, "y": 0, "w": 100, "h": 100, "label": "放射"}, {"role": "escape", "x": 0, "y": 0, "w": 38, "h": 29, "label": "重ねた一覧"}, {"role": "spot", "x": 5, "y": 29, "w": 30, "h": 71, "label": "垂れる罫"}, {"role": "paste", "x": 15, "y": 44, "w": 25, "h": 44, "label": "連続写真を斜めに"}, {"role": "read", "x": 30, "y": 40, "w": 40, "h": 55, "label": "段"}, {"role": "spot", "x": 70, "y": 8, "w": 30, "h": 73, "label": "巨大な一字"}]}, {"id": "C05", "name": "断ち切り写真と記事", "orientation": "landscape", "from": "偶然のためのリズム 貼り込み版（https://claude.ai/artifact/JBuVKdb5vNxWnSWwn1wwXD） p.10–11", "axis": "写真の断ち切り（格子なし）", "gradient": "左頁（写真）が密", "uses": "人物や物の写真が主役の見開き、短歌コラージュ（写真＋縦の歌）", "zones": [{"role": "paste", "x": 0, "y": 0, "w": 50, "h": 100, "label": "全面写真"}, {"role": "spot", "x": 40, "y": 9, "w": 7, "h": 51, "label": "筆"}, {"role": "broken", "x": 55, "y": 6, "w": 37, "h": 20}, {"role": "spot", "x": 51, "y": 27, "w": 14, "h": 23, "label": "一字"}, {"role": "read", "x": 54, "y": 41, "w": 20, "h": 49}, {"role": "read", "x": 76, "y": 44, "w": 20, "h": 16}, {"role": "paste", "x": 72, "y": 28, "w": 21, "h": 19, "label": "逆さ"}, {"role": "repeat", "x": 92, "y": 8, "w": 6, "h": 82}, {"role": "escape", "x": 50, "y": 88, "w": 50, "h": 12}]}, {"id": "C06", "name": "二つの極と円", "orientation": "landscape", "from": "偶然のためのリズム 貼り込み版（https://claude.ai/artifact/JBuVKdb5vNxWnSWwn1wwXD） p.14–15", "axis": "円の中心（理想とずれの二つ）", "gradient": "右頁の円に向かって密", "uses": "三つの概念の関係を見せる見開き、ポスター", "zones": [{"role": "figure", "x": 10, "y": 3, "w": 30, "h": 94, "label": "線で結ぶ"}, {"role": "read", "x": 4, "y": 7, "w": 20, "h": 18}, {"role": "read", "x": 27, "y": 54, "w": 20, "h": 16}, {"role": "read", "x": 4, "y": 71, "w": 21, "h": 21}, {"role": "figure", "x": 55, "y": 14, "w": 40, "h": 56, "label": "円"}, {"role": "spot", "x": 60, "y": 26, "w": 18, "h": 29, "label": "ヴェシカ"}, {"role": "escape", "x": 45, "y": 62, "w": 55, "h": 9, "rot": -14}, {"role": "accent", "x": 74, "y": 40, "w": 1.5, "h": 2}]}, {"id": "C07", "name": "役割の反転", "orientation": "portrait", "from": "偶然のためのリズム 貼り込み版（https://claude.ai/artifact/JBuVKdb5vNxWnSWwn1wwXD） 奥付", "axis": "役割の反転（出典を最大、題を最小）", "gradient": "右下が密", "uses": "奥付、クレジット、ポスターの裏面", "zones": [{"role": "broken", "x": 0, "y": 4, "w": 60, "h": 18, "label": "巨大な語"}, {"role": "read", "x": 7, "y": 24, "w": 86, "h": 56}, {"role": "spot", "x": 55, "y": 66, "w": 45, "h": 34, "label": "巨大な数字"}, {"role": "repeat", "x": 0, "y": 86, "w": 50, "h": 9, "label": "コード"}]}, {"id": "C08", "name": "向かい合う二つの円", "orientation": "portrait", "from": "ソネットと場違い（https://claude.ai/artifact/BnURrTY5nb3BNK7hcMipVQ）", "axis": "円の中心（二つ）", "gradient": "右上（遠い月）から光の粒、一方向", "uses": "ポスター、短歌コラージュ（はがき・正方形）。二つのものが見つめ合う・対になるコンセプト", "note": "作った人の言葉：「気に入った！特に青い点がこのポスターの良いところだ。コンセプトをよく汲み取れている。」 外れる一点は、二つの円から最も遠い角に、紙面でいちばん小さく置く。", "zones": [{"role": "figure", "x": 40, "y": 0, "w": 60, "h": 58, "label": "光の粒"}, {"role": "escape", "x": 0, "y": 0, "w": 45, "h": 20}, {"role": "repeat", "x": 8, "y": 20, "w": 48, "h": 34, "label": "外周の反復"}, {"role": "repeat", "x": 50, "y": 23, "w": 40, "h": 29, "label": "外周の反復"}, {"role": "spot", "x": 9, "y": 22, "w": 42, "h": 30, "label": "大きな円"}, {"role": "paste", "x": 15, "y": 25, "w": 35, "h": 25, "label": "明るい円"}, {"role": "paste", "x": 55, "y": 27, "w": 31, "h": 22, "label": "暗い円"}, {"role": "spot", "x": 63, "y": 35, "w": 6, "h": 4, "label": "瞳"}, {"role": "figure", "x": 3, "y": 53, "w": 51, "h": 7, "label": "明るい影"}, {"role": "figure", "x": 47, "y": 52, "w": 40, "h": 6, "label": "明るい影"}, {"role": "read", "x": 10, "y": 64, "w": 50, "h": 25, "label": "詩"}, {"role": "repeat", "x": 71, "y": 81, "w": 24, "h": 7, "label": "座標"}, {"role": "accent", "x": 86, "y": 9, "w": 2.2, "h": 1.5, "label": "遠い月"}]}, {"id": "C09", "name": "月と閉じた目", "orientation": "portrait", "from": "ポスター「ソネットと場違い 直接」（https://claude.ai/artifact/6FHF2tjb1CQVEjrynGsouA）", "axis": "閉じた目の弧（画面を横切る一本の線）", "gradient": "右上（月）から右下へ光が流れる。詩のまわりには落とさない", "uses": "詩や歌を、書かれているとおりに描くポスター・短歌コラージュ。顔や身体を部分（目、手）だけで出したいとき", "note": "作った人の言葉：「めちゃくちゃいい。説明しすぎずに詩が表現され、かつまつ毛が文字で表現されている点の遊び心があっぱれ。」 詩の言葉をそのまま図にしても、一つ一つは小さく・線だけにして、説明しすぎない。まつげのように、形の一部を反復の語で描く。", "zones": [{"role": "figure", "x": 30, "y": 0, "w": 70, "h": 60, "label": "月の光の粒"}, {"role": "escape", "x": 0, "y": 0, "w": 40, "h": 40}, {"role": "spot", "x": 46, "y": 4, "w": 44, "h": 31, "label": "月の光"}, {"role": "paste", "x": 47, "y": 5, "w": 42, "h": 30, "label": "月"}, {"role": "figure", "x": 11, "y": 46, "w": 77, "h": 6, "label": "閉じた目（線）"}, {"role": "repeat", "x": 12, "y": 48, "w": 76, "h": 8, "label": "まつげ＝反復の語"}, {"role": "spot", "x": 30, "y": 53, "w": 30, "h": 15, "label": "涙"}, {"role": "accent", "x": 45, "y": 58, "w": 2, "h": 3, "label": "青い涙"}, {"role": "figure", "x": 72, "y": 52, "w": 26, "h": 48, "label": "光が抜けた影"}, {"role": "read", "x": 9, "y": 69, "w": 51, "h": 25, "label": "詩"}, {"role": "repeat", "x": 70, "y": 94, "w": 25, "h": 4, "label": "コード"}]}, {"id": "C10", "name": "断章の組み分け", "orientation": "landscape", "from": "ミニコラム「色気＝優しさ、快楽＝振動」4頁版（https://claude.ai/artifact/WxTp4fk7nsXLk4F3LfBVpM） p.3–4", "axis": "断章の番号（01〜17）。組み方は断章ごとに変え、番号の順で読ませる", "gradient": "上端の電球から、左頁の図鑑と右頁の足型へ", "uses": "断章・箇条・Q&A のような短い文章の集まりを数頁で組むとき（コラム、エッセイ、ZINE）", "note": "作った人の言葉：「めちゃくちゃ良くなっている。」「色はいい。」「観覧車もいいが特にいいのはダンスの足形。」「コピー的な強い文章が強調されているのも良い」「全体的に落ち着いているので密度を少し上げるともっと良くなりそう」（3頁目の大きな余白は「退屈」として、ジェットコースターと抜き出しで埋めた） 一つの断章を一つのブロックにし、横組み（幅を変える）・縦組み・チケット・墨ベタ・少し傾けた箱・罫線の箱を混ぜる。コピーとして強い一文を本文から抜き出して大きく組む（本文にも残す）。空いた所には、本文に出てくる物の図（ジェットコースター、足型、正の字）を置く。大きな余白は退屈に見えるので残さない。", "zones": [{"role": "repeat", "x": 1.9, "y": 1.3, "w": 96.2, "h": 3.4, "label": "電球の列"}, {"role": "read", "x": 4.3, "y": 6.7, "w": 24.8, "h": 12.8}, {"role": "escape", "x": 31.0, "y": 6.7, "w": 17.6, "h": 12.1, "label": "墨ベタの断章"}, {"role": "figure", "x": 11.0, "y": 19.5, "w": 19.5, "h": 20.2, "label": "ジェットコースター"}, {"role": "read", "x": 31.0, "y": 24.9, "w": 15.7, "h": 11.1}, {"role": "read", "x": 4.3, "y": 28.3, "w": 5.7, "h": 35.7, "label": "縦組み"}, {"role": "read", "x": 12.4, "y": 41.1, "w": 25.7, "h": 16.8}, {"role": "figure", "x": 40.0, "y": 42.1, "w": 8.6, "h": 25.3, "label": "図鑑"}, {"role": "spot", "x": 4.3, "y": 66.7, "w": 45.2, "h": 4.0, "label": "抜き出し"}, {"role": "read", "x": 4.3, "y": 73.4, "w": 29.0, "h": 11.1}, {"role": "figure", "x": 35.7, "y": 79.5, "w": 12.9, "h": 8.8, "label": "図"}, {"role": "spot", "x": 4.3, "y": 90.2, "w": 41.9, "h": 2.7, "label": "抜き出し"}, {"role": "read", "x": 54.3, "y": 6.7, "w": 19.5, "h": 11.1}, {"role": "spot", "x": 74.8, "y": 10.1, "w": 7.1, "h": 4.0, "label": "正の字"}, {"role": "read", "x": 54.3, "y": 24.6, "w": 23.3, "h": 13.5, "rot": -1.2}, {"role": "read", "x": 83.3, "y": 6.7, "w": 6.9, "h": 32.3, "label": "縦組み"}, {"role": "spot", "x": 79.5, "y": 43.1, "w": 17.1, "h": 2.7, "label": "抜き出し"}, {"role": "read", "x": 54.3, "y": 46.5, "w": 22.4, "h": 14.8}, {"role": "figure", "x": 81.0, "y": 49.8, "w": 15.7, "h": 23.6, "label": "足型"}, {"role": "read", "x": 54.3, "y": 68.0, "w": 25.7, "h": 14.5}, {"role": "read", "x": 81.4, "y": 76.8, "w": 14.8, "h": 10.4, "label": "罫線の箱"}, {"role": "accent", "x": 90.5, "y": 64.0, "w": 0.5, "h": 0.7}]}, {"id": "C11", "name": "写真一枚の地と台割", "orientation": "landscape", "from": "短編「プラネタリウムの夢」二稿（https://claude.ai/artifact/EzRiK5S9iDTWnZbTVmfri1）", "axis": "地の写真一枚（見開きいっぱい。主役の物をノドをまたいで斜めに置く）", "gradient": "写真の暗い帯（地平線の下）から、一句の積み重ねが右下の角へ切れていく", "uses": "短編、エッセイ、詩、批評。本文が長く、意味をすぐに渡したくない誌面。生っぽさを出したいとき（rules.md「生っぽさの規則」）", "note": "作った人の言葉：「めちゃくちゃ良い！！！！トンマナは完全にこっちの方が俺の望んでいたものだ。」「１個目もかっこいいが、どうしてもデザインの範疇であまり飛び抜けた良さがなかったが、今回のはすぐに意味ができないような表現がなされていて素晴らしいと思う。」「この生っぽさも再現性を持てるようにルールを足して。色もいいと思う」（2026-10-08） 学んだ元は『The End of Print』（ルイス・ブラックウェル、デイヴィッド・カーソン）の四つの見開き：Beach Culture の靴の写真と一句の積み重ね、スケートボーダー誌の机の写真と一行ずつの白い帯、印刷所の汚れた紙（ダグ・エイケン「10」の地）、Ray Gun 3号の台割。", "zones": [{"role": "figure", "x": 0, "y": 0, "w": 100, "h": 100, "label": "地の写真一枚"}, {"role": "escape", "x": 0, "y": 84.8, "w": 100, "h": 15.2, "label": "写真の暗い帯"}, {"role": "read", "x": 9.5, "y": 5, "w": 48.1, "h": 9.4, "label": "字間を開けた袋文字の題"}, {"role": "read", "x": 3.3, "y": 18.9, "w": 25.7, "h": 65.3, "label": "素直な二段"}, {"role": "figure", "x": 71.4, "y": 5.4, "w": 26.7, "h": 45.8, "label": "台割と赤ペン"}, {"role": "read", "x": 70.5, "y": 17.5, "w": 28.1, "h": 45.1, "label": "三段（台割の上）"}, {"role": "paste", "x": 56.2, "y": 9.4, "w": 11.4, "h": 15.8, "label": "写真の紙片"}, {"role": "paste", "x": 30.7, "y": 60.6, "w": 15.7, "h": 18.5, "label": "複写（色票ごと）", "rot": -5}, {"role": "paste", "x": 5.2, "y": 85.9, "w": 3.8, "h": 12.1, "label": "人を一人小さく"}, {"role": "spot", "x": 31.4, "y": 0, "w": 45.2, "h": 13.5, "label": "紫の擦れ（文字の上）", "rot": -3}, {"role": "spot", "x": 13.8, "y": 50.5, "w": 14.3, "h": 20.2, "label": "インクの溜まり"}, {"role": "read", "x": 53.8, "y": 57.9, "w": 15.2, "h": 8.1, "label": "白い帯"}, {"role": "broken", "x": 56.2, "y": 64, "w": 43.8, "h": 36, "label": "一句を積む"}, {"role": "accent", "x": 91.4, "y": 44.1, "w": 1.6, "h": 1.6, "label": "赤ペン"}]}]}/*END*/;
+  function findPalette(p) { if (typeof p !== 'string') return p; for (var i = 0; i < Cards.palettes.length; i++) if (Cards.palettes[i].id === p) return Cards.palettes[i]; return null; }
+  /* 色の手札を要素に当てる（その要素の中だけ色が変わる） */
+  function usePalette(el, p) {
+    var pal = findPalette(p); if (!pal) return null; var cols = pal.colors || pal;
+    ROLES.forEach(function (r) { if (cols[r]) el.style.setProperty('--' + r, cols[r]); });
+    return pal;
+  }
+
+  /* ── CardDeck：手札の一覧を描く（色の手札は帯、構図の手札は図） ── */
+  var ZONE = {
+    escape: function (g, c) { g.fillStyle = c.ink; }, read: function (g, c) { g.fillStyle = c.paper; }, spot: function (g, c) { g.fillStyle = c.spot; },
+    paste: function (g, c) { g.fillStyle = c.newsprint; }, figure: function (g, c) { g.fillStyle = c.soft; }, repeat: function (g, c) { g.fillStyle = c.soft; },
+    broken: function (g, c) { g.fillStyle = c.ink; }, accent: function (g, c) { g.fillStyle = c.accent; }
+  };
+  function drawComposition(g, comp, x0, y0, w, h, c) {
+    g.save(); g.fillStyle = c.paper; g.fillRect(x0, y0, w, h);
+    var order = ['figure', 'repeat', 'paste', 'spot', 'broken', 'escape', 'read', 'accent'];
+    order.forEach(function (role) {
+      comp.zones.forEach(function (z) {
+        if (z.role !== role) return; var x = x0 + z.x / 100 * w, y = y0 + z.y / 100 * h, zw = z.w / 100 * w, zh = z.h / 100 * h;
+        g.save(); g.beginPath(); g.rect(x0, y0, w, h); g.clip();
+        if (z.rot) { g.translate(x + zw / 2, y + zh / 2); g.rotate(z.rot * Math.PI / 180); g.translate(-(x + zw / 2), -(y + zh / 2)); }
+        if (role === 'figure' || role === 'repeat') { g.globalAlpha = role === 'figure' ? .28 : .5; ZONE[role](g, c);
+          if (role === 'repeat') { for (var yy = y + 1; yy < y + zh; yy += 2.2) g.fillRect(x, yy, zw, .5); } else g.fillRect(x, y, zw, zh); }
+        else if (role === 'spot') { g.globalCompositeOperation = 'multiply'; ZONE.spot(g, c); g.fillRect(x, y, zw, zh); }
+        else if (role === 'read') { ZONE.read(g, c); g.fillRect(x, y, zw, zh); g.strokeStyle = c.ink; g.lineWidth = .3; g.strokeRect(x, y, zw, zh); g.fillStyle = c.ink; for (var ly = y + 2; ly < y + zh - 1; ly += 1.8) g.fillRect(x + 1.5, ly, zw - 3, .45); }
+        else if (role === 'paste') { g.shadowColor = 'rgba(0,0,0,.3)'; g.shadowBlur = 1.2; g.shadowOffsetY = .5; ZONE.paste(g, c); g.fillRect(x, y, zw, zh); }
+        else { ZONE[role](g, c); g.fillRect(x, y, zw, zh); }
+        g.restore();
+      });
+    });
+    g.strokeStyle = c.ink; g.lineWidth = .2; g.strokeRect(x0, y0, w, h); g.restore();
+  }
+  function CardDeck(el, o) {
+    o = o || {}; var pal = findPalette(o.palette || (Cards.palettes[0] && Cards.palettes[0].id)); if (pal) usePalette(el, pal);
+    el.innerHTML = ''; el.classList.add('ks-deck');
+    Cards.palettes.forEach(function (p) {
+      var card = document.createElement('figure'); card.className = 'ks-card';
+      var strip = document.createElement('div'); strip.className = 'ks-swatches';
+      ['paper', 'ink', 'spot', 'accent', 'newsprint'].forEach(function (r) { var s = document.createElement('span'); s.style.background = p.colors[r]; s.title = r + ' ' + p.colors[r]; s.style.flexGrow = r === 'ink' ? 5 : r === 'spot' ? 3 : r === 'paper' ? 2 : 1; strip.appendChild(s); });
+      card.appendChild(strip);
+      var cap = document.createElement('figcaption'); cap.textContent = p.id + '　' + p.name; card.appendChild(cap); el.appendChild(card);
+    });
+    Cards.compositions.forEach(function (comp) {
+      var card = document.createElement('figure'); card.className = 'ks-card';
+      var cv = document.createElement('canvas'); cv.className = 'ks-thumb'; var land = comp.orientation === 'landscape';
+      cv.style.aspectRatio = land ? '296 / 210' : '148 / 210'; card.appendChild(cv);
+      var cap = document.createElement('figcaption'); cap.textContent = comp.id + '　' + comp.name; card.appendChild(cap); el.appendChild(card);
+      requestAnimationFrame(function () { var W = land ? 74 : 37, H = 52.5; var g = prep(cv, W); drawComposition(g, comp, 0, 0, W, H, readColors(el)); });
+    });
+  }
+
+
+  /* ── 生っぽさの部品（The End of Print から。手札 C11・P04） ── */
+  /* Ground：見開きいっぱいの写真一枚を地にする（いちばん下）。Stain：刷った汚れを文字の上に透かして乗せる */
+  function Ground(sheet, src, alt) {
+    var el = sheet.querySelector('img.ks-ground');
+    if (!el) { el = document.createElement('img'); el.className = 'ks-ground'; sheet.insertBefore(el, sheet.firstChild); }
+    el.src = src; el.alt = alt || ''; return el;
+  }
+  function Stain(sheet, src, o) {
+    var el = document.createElement('img'); el.className = 'ks-stain'; el.src = src; el.alt = ''; el.setAttribute('aria-hidden', 'true');
+    place(el, o.x, o.y, o.w, null, o.rot); if (o.opacity != null) el.style.opacity = o.opacity;
+    sheet.appendChild(el); return el;
+  }
+  /* 刷るたびに汚れを少し動かす（±amp mm） */
+  function jitterStains(sheet, R, amp) { amp = amp == null ? 3 : amp; Array.prototype.forEach.call(sheet.querySelectorAll('.ks-stain'), function (el) { el.style.translate = 'calc(var(--mm)*' + ((R() - .5) * 2 * amp).toFixed(2) + ') calc(var(--mm)*' + ((R() - .5) * 2 * amp).toFixed(2) + ')'; }); }
+  /* 文字の上の層（z 8）。draw の中で呼ぶと、消して描ける ctx を返す */
+  function Over(sheet, W) {
+    var cv = sheet.querySelector('canvas.ks-over');
+    if (!cv) { cv = document.createElement('canvas'); cv.className = 'ks-over'; cv.setAttribute('aria-hidden', 'true'); sheet.appendChild(cv); }
+    return prep(cv, W);
+  }
+
+  /* ── Pen：手で描いた線。ボールペンの青と赤ペン。少し曲がり、端がはみ出す ── */
+  var Pen = {
+    line: function (g, R, x1, y1, x2, y2, w, col, a) {
+      var len = Math.hypot(x2 - x1, y2 - y1) || 1, nx = -(y2 - y1) / len, ny = (x2 - x1) / len, bend = (R() - .5) * 1.2, ox = (R() - .5) * 1.2, oy = (R() - .5) * 1.2;
+      g.save(); g.strokeStyle = col || C.ink; g.lineCap = 'round'; g.lineJoin = 'round'; g.globalAlpha = a == null ? .9 : a; g.lineWidth = w || .28; g.beginPath();
+      for (var i = 0; i <= 6; i++) { var t = -.04 + i / 6 * 1.08, b = Math.sin(t * Math.PI) * bend; var x = x1 + (x2 - x1) * t + nx * b + ox * (1 - t) + (R() - .5) * .35, y = y1 + (y2 - y1) * t + ny * b + oy * (1 - t) + (R() - .5) * .35; i ? g.lineTo(x, y) : g.moveTo(x, y); }
+      g.stroke(); g.restore();
+    },
+    /* 枠（見開きの枠なら中に一本）。o: {w 線幅, a 濃さ, spine 中の線} */
+    box: function (g, R, x, y, w, h, col, o) { o = o || {}; var lw = o.w || .22, a = o.a == null ? .55 : o.a; Pen.line(g, R, x, y, x + w, y, lw, col, a); Pen.line(g, R, x + w, y, x + w, y + h, lw, col, a); Pen.line(g, R, x + w, y + h, x, y + h, lw, col, a); Pen.line(g, R, x, y + h, x, y, lw, col, a); if (o.spine !== false) Pen.line(g, R, x + w / 2, y + .5, x + w / 2, y + h - .5, lw * .7, col, a * .75); },
+    /* 赤い×。文字の上を通るなら a は .5 まで */
+    x: function (g, R, x, y, w, h, col, o) { o = o || {}; var lw = o.w || .4, a = o.a == null ? .5 : o.a; Pen.line(g, R, x + 1, y + 1, x + w - 1, y + h - 1, lw, col || C.accent, a); Pen.line(g, R, x + w - 1, y + 1.5, x + 1.5, y + h - 1, lw, col || C.accent, a); },
+    /* 囲む丸（少し閉じきらない） */
+    ring: function (g, R, cx, cy, rx, ry, col, o) { o = o || {}; g.save(); g.strokeStyle = col || C.accent; g.lineWidth = o.w || .45; g.globalAlpha = o.a == null ? .85 : o.a; g.beginPath(); g.ellipse(cx, cy, rx, ry, (R() - .5) * .3, .2, TAU + .1); g.stroke(); g.restore(); },
+    /* 書き込み（手書きの書体 Yomogi） */
+    write: function (g, s, x, y, size, col, rot) { T(g, s, x, y, size, { f: F.hand, c: col || C.ink, rot: rot || 0 }); },
+    /* 台割：count 個の見開きの枠に番号。crossed(i) が真なら赤い×、notes[i] は枠の中の書き込み、circle は丸で囲む番号 */
+    flatplan: function (g, R, o) {
+      var cols = o.cols || 4, bw = o.bw || 22, bh = o.bh || 13, gx = o.gx || 6, gy = o.gy || 9.5, pen = o.pen || '#1d3fae', red = o.red || C.accent;
+      for (var i = 0; i < (o.count || 24); i++) {
+        var x = o.x + (i % cols) * (bw + gx) + (R() - .5) * 1.4, y = o.y + Math.floor(i / cols) * (bh + gy) + (R() - .5) * 1.2;
+        Pen.box(g, R, x, y, bw, bh, pen); Pen.write(g, String((o.start || 1) + i), x + (R() - .5) * 2, y + bh + 3.6, 2.8, pen, (R() - .5) * .2);
+        if (o.crossed && o.crossed(i)) Pen.x(g, R, x, y, bw, bh, red);
+        if (o.notes && o.notes[i]) Pen.write(g, o.notes[i], x + 1.5, y + bh * .55, 2.6, red, -.06);
+        if (o.circle && o.circle.indexOf(i) >= 0) Pen.ring(g, R, x + bw / 2, y + bh / 2, bw * .62, bh * .78, red);
+      }
+    }
+  };
+
+  /* ── Strip：忙しい地の上の文字を、一行ずつ白い帯に載せる（スケートボーダー誌のキャプション）。lines は配列か <br> 区切りの html ── */
+  function Strip(sheet, o) {
+    var el = document.createElement(o.tag || 'p'); el.className = 'ks-read ks-strip' + (o.big ? ' ks-strip-big' : '') + (o.className ? ' ' + o.className : '');
+    var html = Array.isArray(o.lines) ? o.lines.join('<br>') : o.html;
+    el.innerHTML = '<span class="ks-band">' + html + '</span>'; sheet.appendChild(el); return place(el, o.x, o.y, o.w, null, o.rot);
+  }
+
+  /* ── PhraseStack：本文の一句だけを、大きさ・字間・書体・箱・下線を変えて積み、紙の端で切る（Beach Culture） ──
+     lines: [{html, x, y, size, font:'mincho'|'gothic'|'mono', wt, ls(em), inv: 地が暗い所で白に}]。<span class="box">字</span> で箱、<span class="ul">…</span> で下線 */
+  function PhraseStack(sheet, lines) {
+    return lines.map(function (l) {
+      var el = document.createElement('p'); el.className = 'ks-read ks-stack' + (l.inv ? ' ks-inv' : ''); el.innerHTML = l.html; el.setAttribute('aria-hidden', 'true');
+      place(el, l.x, l.y); el.style.fontSize = 'calc(var(--mm)*' + l.size + ')';
+      if (l.font) el.style.fontFamily = 'var(--font-' + l.font + ')'; if (l.wt) el.style.fontWeight = l.wt; if (l.ls != null) el.style.letterSpacing = l.ls + 'em';
+      sheet.appendChild(el); return el;
+    });
+  }
+
+  window.Kasane = {
+    Sheet: Sheet, Halftone: Halftone, Marks: Marks, Codes: Codes, RepeatField: RepeatField, ReadPanel: ReadPanel, EscapeBand: EscapeBand,
+    PastedPhoto: PastedPhoto, TilePrint: TilePrint, BrokenWord: BrokenWord, DingbatText: DingbatText, BrushDrip: BrushDrip,
+    StringArt: StringArt, Vesica: Vesica, OverlapList: OverlapList, Accident: Accident, CardDeck: CardDeck,
+    Formats: Formats, Cards: Cards, usePalette: usePalette, drawComposition: drawComposition,
+    Ground: Ground, Stain: Stain, jitterStains: jitterStains, Over: Over, Pen: Pen, Strip: Strip, PhraseStack: PhraseStack,
+    text: T, vtext: V, line: line, clip: clip, rng: rng, pad: pad, drips: drips, reprint: reprint, colors: function (el) { return readColors(el); }, fonts: F
+  };
+})();
+
+</script>
+<script>
+window.BSS_TEXT = {"18": "0.初めてのBSS", "19": "フロイトは眉唾な精神分析の体系を作り上げ、今でも人々を魅了してやまない。通俗的とも取れる性を交えた主張は僕たちを笑わせて本気にさせないが、侮ってはいけない。", "21": "まず一つに、フロイトが性を用いることなしには、無意識を説明できなかったからだ。", "22": "彼のもとに来た患者たちは、身体のどこも壊れていないのに、腕が動かなかったり、声が出なかったりした。医学では原因が見つからなかった。フロイトが話を聞いていくと、その奥にはいつも、人に言えない欲望があった。", "23": "空腹なら口にできるし、満たすこともできる。けれど性の欲望は、子どものころから禁じられ、隠される。それでいて消えることがない。忘れたふりをしながら持ち続けられる欲望は、性しかなかった。フロイトはその置き場所を、無意識と呼んだ。", "24": "精神分析は、この欲望の戻り道を逆にたどる作業だった。フロイトは最初、催眠で患者に記憶を思い出させようとした。しかしある患者に、質問ばかりしないで私の話を聞いてほしいと言われる。そこから彼は、横になった患者に、頭に浮かんだことを何でも話してもらう自由連想へと移っていく。フロイトは話の筋を整えず、ためらいや言い淀み、夢の細部に耳を澄ます。", "25": "すると患者はしばしば、かつての親との関係を、目の前のフロイトとの関係の中で繰り返しはじめる。フロイトはこれを転移と呼んだ。いま演じてしまっているものが実は過去の記憶なのだと、患者自身が気づくこと。演じることを、思い出すことに変えること。それが治療の要だった。", "26": "そして、これで実際に治ってしまった。フロイトはただ空想で考えたのではなく、臨床による観察と分析によってこの方法を編み出した。だからこそ、無意味ではないはずなのだ。", "28": "もう一つに、無意識からどうにかして記号を見つけて、意味を見出して相手を理解しようとする行為は愛の実践と非常に似通っているからだ。", "29": "フロイトは精神分析によって人間の言動は理解しうるということに賭けた。この賭けは、後年の精神医学の発展により大部分は検証に耐えなかったが、それでもなお僕は賭けてみようと思う。", "32": "フロイトはかの有名なエディプス・コンプレックスを考えた。", "33": "簡単に説明すると、生まれてすぐの幼児は、世界を快と不快で捉えている。不快に満ちた世界の中で、育児をしてくれる母親を通して、幼児は快が自分の外、つまり他者の側にあることを知る。母親の世話からは情愛が育ち、同時に、世話を通して身体の快も目覚め、官能が湧き上がる。情愛と官能は、愛と恋と言い換えるとわかりやすい。やがて三歳から五歳ごろ、幼児は母親を一人の人として愛し、独占したいと思うようになる。しかし母親の隣には、すでに父親がいる。母親を独り占めしたい欲望と、邪魔な父親への敵意。これがエディプス・コンプレックスだ。そして父親には敵わない、罰せられるという恐れから、子どもはこの欲望をあきらめ、代わりに父親のようになろうとする。", "35": "まさにBSSではないだろうか？　決して、僕が先であるはずはないが、BSSの肝心なところは、僕が先に好きであったことも否定され得るということだ。愛の対象が奪われることと、僕の愛が一番乗りだったことまで否定されること、その二つがBSSなのだ。", "36": "フロイトは幼少期にあるBSSが無意識となって、その後の神経症につながると考えた。", "37": "エディプス・コンプレックスは「人がそもそも人を好きになり愛することを学ぶのはどこにおいてか」という問いに与えた答えであり、にもかかわらず同時に「人が初めて失敗し挫折し断念するのはどこにおいてか」という問いに与えた答えでもある、とこんこん「フロイト性理論の再構成」は解釈している。", "39": "原初のBSSから僕たちは愛を学ぶのだ。"};
+window.BSS_POS = {"i": 2, "n": 15, "lap": 1, "dir": 3, "perLap": 12, "stages": [null, null, 0, 1, 2, 3, 4, 5, 5, 6, 7, 7, 8, 9, null]};
+</script>
+<script>
+/* BSS の号に共通の部品。紙は Kasane.Sheet（刷り重ね）で、210×297mm、手札 P04。
+   BSS.page({id, stage, build(h), draw(c, h), font}) で一枚を刷る。
+   build は文字や貼り込みを一度だけ置く。draw は刷るたびに版（canvas）を描く。 */
+(function () {
+  'use strict';
+  var K = window.Kasane, F = K.fonts;
+  var STAGES = ['初めてのBSS', '恋に恋する', '感嘆', '想像', '希望', '恋が動き出す', '第一の結晶作用', '疑い', '第二の結晶作用', '詩とキス'];
+  var PEN = '#1d3fae';   /* P04 のボールペンの青 */
+  var TOTAL = 15;
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]; }); }
+  function mm(el, o) { ['x', 'y', 'w', 'h'].forEach(function (k) { if (o[k] != null) el.style[{x: 'left', y: 'top', w: 'width', h: 'height'}[k]] = 'calc(var(--mm)*' + o[k] + ')'; }); if (o.rot) el.style.transform = 'rotate(' + o.rot + 'deg)'; return el; }
+
+  function helpers(sheet, P) {
+    var T = window.BSS_TEXT || {};
+    var h = {
+      sheet: sheet, K: K, F: F, PEN: PEN, esc: esc, mm: mm,
+      /* 本文の一行（sources/BSS.md の行番号） */
+      par: function (n) { return T[n] || ''; },
+      add: function (tag, cls, html, o) { var el = document.createElement(tag); el.className = 'ks-read ' + cls; el.innerHTML = html; mm(el, o || {}); if (o && o.hidden) el.setAttribute('aria-hidden', 'true'); if (o && o.style) el.setAttribute('style', el.getAttribute('style') + ';' + o.style); sheet.appendChild(el); return el; },
+      /* 本文を段に流す。from〜to の行（空行は飛ばす）。skip の行は入れない（題に使った行） */
+      body: function (o) {
+        var html = '';
+        for (var n = o.from; n <= o.to; n++) { if (!T[n] || (o.skip && o.skip.indexOf(n) >= 0)) continue; html += '<p data-n="' + n + '">' + esc(T[n]) + '</p>'; }
+        var el = h.add('div', 'body' + (o.cls ? ' ' + o.cls : ''), html, o); el.style.columnCount = o.cols || 1; el.setAttribute('data-fit', '1'); return el;
+      },
+      paste: function (src, alt, o) {
+        var el = document.createElement('img'); el.className = 'ks-paste' + (o.cls ? ' ' + o.cls : ''); el.src = src; el.alt = alt;
+        el.dataset.x = o.x; el.dataset.y = o.y; el.dataset.w = o.w; if (o.ar) el.dataset.ar = o.ar; if (o.h) el.dataset.h = o.h;
+        if (o.rot) el.dataset.rot = o.rot; if (o.tape) el.dataset.tape = o.tape; if (o.fix) el.dataset.fix = 1; if (o.style) el.setAttribute('style', o.style);
+        sheet.appendChild(el); return el;
+      },
+      strip: function (o) { return K.Strip(sheet, o); },
+      stack: function (lines) { return K.PhraseStack(sheet, lines); },
+      ground: function (src, alt) { return K.Ground(sheet, src, alt); },
+      stain: function (src, o) { return K.Stain(sheet, src, o); }
+    };
+    return h;
+  }
+
+  /* 紙の共通の家具：トンボ、柱、スタンダールの段階の目盛り（いまの段階に赤ペンの丸）、ノンブル */
+  function furniture(c, P, C) {
+    var k = c.k, r = c.r, R = c.R, inv = P.inv || {};
+    if (c.on[2]) K.Marks.trims(k, 210, 297);
+    if (!c.on[4]) return;
+    /* 段階の目盛り：0〜9。下の余白に */
+    var x0 = P.scaleX || 62, x1 = x0 + 90, y = P.scaleY || 287.6, col = inv.scale ? C.paper : C.ink;
+    k.save(); k.strokeStyle = col; k.lineWidth = .14; k.globalAlpha = .8; k.beginPath(); k.moveTo(x0 - 2, y - 1.1); k.lineTo(x1 + 2, y - 1.1); k.stroke(); k.restore();
+    for (var i = 0; i < 10; i++) {
+      var x = x0 + i * 10;
+      k.save(); k.strokeStyle = col; k.lineWidth = .14; k.beginPath(); k.moveTo(x, y - 2.2); k.lineTo(x, y); k.stroke(); k.restore();
+      K.text(k, String(i), x, y + 3.2, 2.1, {f: F.mono, al: 'center', c: col});
+    }
+    K.text(k, 'STENDHAL', x0 - 4, y + 3.2, 1.7, {f: F.mono, al: 'right', c: col, ls: .12});
+    if (P.stage != null) {
+      var cx = x0 + P.stage * 10;
+      K.Pen.ring(r, R, cx, y + 2.4, 2.7, 2.3, C.accent, {w: .42, a: .9});
+      K.Pen.write(r, STAGES[P.stage], cx + 4, y + 7.6, 2.4, C.accent, -.03);
+    }
+  }
+
+  /* 見開きの層の部品。座標は見開き全体（幅 = 12×210mm）の mm。この紙の分だけずらして置く */
+  function spreadHelpers(sheet, h, SX, POS) {
+    return {
+      K: K, F: F, PEN: PEN, X: SX, pos: POS, W: POS.perLap * 210, H: 297,
+      add: function (tag, cls, html, o) { o = Object.assign({}, o); o.x -= SX; var el = h.add(tag, cls + ' bleed', html, o); el.setAttribute('aria-hidden', 'true'); return el; },
+      stain: function (src, o) { o = Object.assign({}, o); o.x -= SX; var el = K.Stain(sheet, src, o); el.classList.add('sp'); return el; },
+      /* 紙と紙の継ぎ目に貼るテープ。刷り直しても動かない（巡ごとの乱数） */
+      tape: function (R, x, y, w, rot) {
+        var t = document.createElement('div'); t.className = 'sp-tape'; t.setAttribute('aria-hidden', 'true'); var pts = [], i;
+        for (i = 0; i <= 6; i++) pts.push((R() * 7).toFixed(1) + '% ' + (i / 6 * 100).toFixed(1) + '%');
+        for (i = 6; i >= 0; i--) pts.push((93 + R() * 7).toFixed(1) + '% ' + (i / 6 * 100).toFixed(1) + '%');
+        h.mm(t, {x: x - SX - w / 2, y: y, w: w}); t.style.transform = 'rotate(' + rot + 'deg)'; t.style.clipPath = 'polygon(' + pts.join(',') + ')';
+        sheet.appendChild(t); return t;
+      }
+    };
+  }
+
+  function page(P) {
+    var sheet = document.getElementById('sheet');
+    if (P.css) { var st = document.createElement('style'); st.textContent = P.css; document.head.appendChild(st); }
+    var h = helpers(sheet, P);
+    var seed = P.seed || (parseInt(P.id, 10) * 7919 + 20261013);
+    if (P.build) P.build(h);
+    /* 柱：左上に号、右上に型番。ノンブルは左下、刷り番号は右下（押すと刷り直す） */
+    var inv = P.inv || {};
+    h.add('div', 'run' + (inv.head ? ' inv' : ''), 'BSS　僕が先に好きだったのに', {x: 14, y: 7.6});
+    var POS = window.BSS_POS || {i: parseInt(P.id, 10) - 1, n: TOTAL, lap: 1, dir: parseInt(P.id, 10), perLap: 12};
+    h.add('div', 'run' + (inv.head ? ' inv' : ''), '巡' + POS.lap + '・方位' + POS.dir + '　' + K.Codes.model(parseInt(P.id, 10)).replace('RFC–', 'RFC–BSS–'), {x: 136, y: 7.6, style: 'text-align:right;width:calc(var(--mm)*60)'});
+    h.add('div', 'run' + (inv.foot ? ' inv' : ''), K.pad(POS.i + 1, 2) + ' ／ ' + POS.n, {x: 14, y: 286.4});
+    /* 見開きの層：一巡（12枚）を一つの見開きとして描く層。この紙は見開きの左から (方位−1)×210mm の所を切り取って見せる */
+    var SP = window.BSS_SPREADS && window.BSS_SPREADS[POS.lap], SX = (POS.dir - 1) * 210, sR = K.rng(POS.lap * 104729 + 7);
+    var sh = SP && spreadHelpers(sheet, h, SX, POS);
+    if (SP && SP.build) SP.build(sh);
+    var sl = h.add('div', 'run seed' + (inv.foot ? ' inv' : ''), '', {x: 160, y: 286.4, style: 'text-align:right;width:calc(var(--mm)*36)'});
+    sl.setAttribute('role', 'button'); sl.setAttribute('tabindex', '0'); sl.setAttribute('title', '押すと刷り直す（網点・汚れ・紙片の角度・版ずれが変わる）');
+    var api = K.Sheet(sheet, {w: 210, h: 297, k: 1, palette: 'P04', seed: seed,
+      fontText: STAGES.join('') + 'STENDHAL0123456789' + (P.font || ''),
+      draw: function (c) {
+        var C = K.colors(c.sheet);
+        if (P.draw) P.draw(c, h, C);
+        furniture(c, P, C);
+        if (SP && SP.draw) {
+          [c.k, c.r].forEach(function (g) { g.save(); g.translate(-SX, 0); });
+          SP.draw({k: c.k, r: c.r, R: K.rng(POS.lap * 104729 + 7), C: C, on: c.on, W: POS.perLap * 210, H: 297, X: SX, pos: POS}, sh);
+          [c.k, c.r].forEach(function (g) { g.restore(); });
+        }
+        if (c.on[6]) { K.jitterStains(c.sheet, c.R, 2.4); Array.prototype.forEach.call(c.sheet.querySelectorAll('.ks-stain.sp'), function (el) { el.style.translate = ''; }); }
+        sl.textContent = '刷り番号 ' + K.pad(c.seed, 10);
+      }});
+    function again() { K.reprint(); }
+    sl.addEventListener('click', again); sl.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); again(); } });
+    window.__bss = {api: api, page: P};
+    return api;
+  }
+
+  window.BSS = {page: page, STAGES: STAGES, PEN: PEN, esc: esc};
+})();
+
+</script>
+<script>
+/* 見開きの層。一巡（12枚）を一つの見開き（12×210＝2520mm × 297mm）として描く。
+   座標は見開き全体の mm。紙は自分の分（方位−1）×210mm だけずらして切り取る。2D 全体図で一巡を並べると一枚の絵になる。
+   刷り直しても動かない（乱数は巡ごとに決まっている）。
+   BSS_SPREADS[巡] = {build(s)：DOM（汚れ・テープ・字）を一度置く, draw(c, s)：版（canvas）に描く} */
+(function () {
+  var W = 210, POSY = 290;   /* 段階の目盛りの丸の高さ（common.js の furniture と同じ） */
+  /* 紙 i の段階の丸の位置（見開き全体の mm）。段階のない紙は null */
+  function ringAt(pos, i) { var st = pos.stages[i]; return st == null ? null : {x: (i % pos.perLap) * W + 62 + st * 10, y: POSY}; }
+  /* 糸：段階の丸を、紙の継ぎ目をまたいで一本の赤ペンでつなぐ。丸と丸のあいだは下へたわむ */
+  function thread(g, R, pts, col) {
+    g.save(); g.strokeStyle = col; g.lineWidth = .36; g.lineCap = 'round'; g.globalAlpha = .82; g.beginPath(); g.moveTo(pts[0].x, pts[0].y);
+    for (var i = 1; i < pts.length; i++) {
+      var a = pts[i - 1], b = pts[i], d = Math.abs(b.x - a.x), sag = Math.min(6.5, 1.2 + d / 60);
+      var cx = (a.x + b.x) / 2 + (R() - .5) * 8, cy = Math.max(a.y, b.y) + sag + (R() - .5) * 1.2;
+      g.quadraticCurveTo(cx, cy, b.x + (R() - .5) * .3, b.y + (R() - .5) * .3);
+    }
+    g.stroke(); g.restore();
+  }
+  /* 継ぎ目をまたぐ書き込み（青のボールペン） */
+  function note(K, g, R, txt, x, y, size, col, rot) { K.Pen.write(g, txt, x, y, size, col, rot == null ? (R() - .5) * .08 : rot); }
+  function arrow(K, g, R, x1, y1, x2, y2, col) {
+    K.Pen.line(g, R, x1, y1, x2, y2, .32, col, .85);
+    var a = Math.atan2(y2 - y1, x2 - x1), L = 2.6;
+    K.Pen.line(g, R, x2, y2, x2 - L * Math.cos(a - .45), y2 - L * Math.sin(a - .45), .32, col, .85);
+    K.Pen.line(g, R, x2, y2, x2 - L * Math.cos(a + .45), y2 - L * Math.sin(a + .45), .32, col, .85);
+  }
+  /* 継ぎ目のテープ：12枚を貼り合わせて一枚の見開きにした跡。上と下の端に */
+  function seamTapes(s, R, from, to) {
+    for (var k = from; k <= to; k++) {
+      var x = k * W;
+      s.tape(R, x + (R() - .5) * 4, -2.2 + R() * 1.4, 15 + R() * 6, (R() - .5) * 9);
+      s.tape(R, x + (R() - .5) * 4, 292.6 + R() * 1.4, 13 + R() * 6, (R() - .5) * 9);
+    }
+  }
+
+  window.BSS_SPREADS = {
+    /* 巡1：表紙から 7 疑い（二）まで。糸は表紙の端から始まり、段階の丸を順につないで、右の端から巡2へ出ていく */
+    1: {
+      build: function (s) {
+        var R = s.K.rng(1301);
+        seamTapes(s, R, 1, 11);
+        s.stain('img/smear.png', {x: 4 * W - 46, y: 196, w: 96, rot: -7, opacity: .5});     /* 1 と 2 の継ぎ目 */
+        s.stain('img/cola.png', {x: 8 * W - 24, y: 222, w: 46, rot: 18, opacity: .55});     /* 5 の二枚の継ぎ目 */
+        s.stain('img/blot.png', {x: 11 * W - 18, y: 24, w: 34, rot: -40, opacity: .5});     /* 7 の二枚の継ぎ目 */
+      },
+      draw: function (c, s) {
+        var K = s.K, g = c.r, R = c.R, C = c.C, PEN = s.PEN, pos = c.pos;
+        if (!c.on[4]) return;
+        var pts = [{x: 14, y: 293}];
+        for (var i = 0; i < pos.perLap && i < pos.n; i++) { var p = ringAt(pos, i); if (p) pts.push(p); }
+        pts.push({x: c.W + 4, y: 293});
+        thread(g, R, pts, C.accent);
+        note(K, g, R, '巡2へ →', c.W - 22, 296, 2.8, C.accent, -.04);
+        /* 継ぎ目をまたぐ書き込み */
+        note(K, g, R, 'ここから時系列 →', 2 * W - 13, 14.2, 2.9, PEN);
+        note(K, g, R, '落ちる', 6 * W - 6, 14, 3.4, PEN, .12); arrow(K, g, R, 6 * W - 2, 15.6, 6 * W + 6, 22, PEN);
+        note(K, g, R, '付き合う →', 9 * W - 10, 14.2, 2.9, PEN);
+        note(K, g, R, '先取りは失敗する', 10 * W - 14, 14.2, 2.6, C.accent, -.06);
+        note(K, g, R, '同じ7が二枚', 11 * W - 10, 280, 2.6, PEN, -.03);
+      }
+    },
+    /* 巡2：8 第二の結晶作用・9 詩とキス・奥付。糸は左の端から入り、奥付の右の端から成長点へ出ていく */
+    2: {
+      build: function (s) {
+        var R = s.K.rng(1302);
+        seamTapes(s, R, 1, Math.min(s.pos.n - s.pos.perLap, s.pos.perLap) - 1);
+        s.stain('img/blot_k.png', {x: 2 * W - 20, y: 240, w: 40, rot: 30, opacity: .45});
+      },
+      draw: function (c, s) {
+        var K = s.K, g = c.r, R = c.R, C = c.C, PEN = s.PEN, pos = c.pos;
+        if (!c.on[4]) return;
+        var n2 = pos.n - pos.perLap, pts = [{x: -4, y: 293}];
+        for (var i = pos.perLap; i < pos.n; i++) { var p = ringAt(pos, i); if (p) pts.push(p); }
+        pts.push({x: n2 * W + 4, y: 293});
+        thread(g, R, pts, C.accent);
+        note(K, g, R, '← 巡1から', 6, 296, 2.8, C.accent, .03);
+        note(K, g, R, '成長点 →', n2 * W - 20, 296, 2.8, C.accent, -.04);
+        note(K, g, R, 'もう一度始めよう →', W - 16, 14.2, 2.9, PEN);
+        note(K, g, R, '同時に', 2 * W - 8, 14.2, 3.2, C.accent, -.05);
+      }
+    }
+  };
+})();
+
+</script>
+<script>
+/* 0 初めてのBSS。軸は円の中心（特色版の巨大な「0」）。貼り込みはマイブリッジの「子を抱いて歩く女」の一段六コマ。
+   本文は三段。抜き出しは「原初のBSSから僕たちは愛を学ぶのだ。」。余白に青のボールペンで、母・父・僕の三角の書き込み */
+BSS.page({id: '003', stage: 0,
+  font: '0初めてのBSS母父僕先？',
+  build: function (h) {
+    h.add('h2', 'hd', '<small>0 ／ STENDHAL 以前</small>' + h.esc(h.par(18).replace(/^0\./, '')), {x: 14, y: 17});
+    h.paste('img/mother.jpg', '子を抱いた女と、その横を歩く小さな女の子の六コマ。コピー機に通したような黒', {x: 8, y: 44, w: 142, ar: 1500 / 386, rot: -1.4, tape: 2});
+    h.strip({x: 70, y: 86, lines: ['Fig.2　子を抱いて歩く女　マイブリッジ『動物の運動』1887年']});
+    h.add('p', 'pull p6', h.esc(h.par(39)), {x: 14, y: 93});
+    h.body({from: 19, to: 39, x: 14, y: 104, w: 182, h: 174, cols: 3, cls: 'on-paper'});
+    h.stain('img/cola.png', {x: 150, y: 70, w: 44, rot: 12, opacity: .55});
+  },
+  css: '.p6.ks-read{font-size:calc(var(--mm)*4.6)}',
+  draw: function (c, h, C) {
+    var K = h.K, F = h.F, k = c.k, r = c.r, R = c.R, PEN = h.PEN;
+    if (c.on[3]) K.text(r, '0', 146, 106, 128, {f: F.go, wt: 900, c: C.spot, a: .9});
+    if (c.on[3]) {
+      var A = [150, 262], B = [184, 262], P = [167, 279];
+      K.Pen.line(r, R, A[0], A[1], B[0], B[1], .3, PEN, .85); K.Pen.line(r, R, B[0], B[1], P[0], P[1], .3, PEN, .85); K.Pen.line(r, R, P[0], P[1], A[0], A[1], .3, PEN, .85);
+      K.Pen.write(r, '母', A[0] - 5, A[1] + 1, 3.4, PEN, -.05); K.Pen.write(r, '父', B[0] + 1.4, B[1] + 1, 3.4, PEN, .05); K.Pen.write(r, '僕', P[0] - 1.6, P[1] + 5, 3.4, PEN, 0);
+      K.Pen.x(r, R, A[0] + 6, A[1] - 4, 16, 8, C.accent, {a: .7});
+      K.Pen.write(r, '先？', A[0] + 9, A[1] - 6, 3, C.accent, -.1);
+    }
+  }
+});
+
+</script>
+</body>
+</html>

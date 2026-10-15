@@ -1,0 +1,726 @@
+<!doctype html>
+<html lang="ja">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>映画館｜shutanakajima ポートフォリオサイト</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono&family=Shippori+Mincho+B1:wght@400;600&display=swap">
+<style>
+/* Layout: 画面いっぱいに横長（16:9）の映画館。文字は下の端の小さな時計と、左の螺旋を押して開く雑誌だけ。比が違う画面では、はみ出す側を切る（cover） */
+:root{--ground:#050304;color-scheme:dark}
+html,body{height:100%}
+body{margin:0;background:var(--ground);overflow:hidden}
+.frame{position:absolute;left:50%;top:50%;width:max(100vw,177.78vh);height:max(56.25vw,100vh);transform:translate(-50%,-50%)}
+.frame{touch-action:none}
+.frame canvas,.frame img{position:absolute;inset:0;width:100%;height:100%;display:block}
+.frame img{object-fit:cover;transition:opacity 1.2s ease}
+.frame canvas.live{pointer-events:none}
+/* 時計：下の端に小さく。帯は一巡り（昼 60 秒、夜 60 秒）、縦の線がいま */
+.clock{position:fixed;left:50%;bottom:max(14px,2.4vh);transform:translateX(-50%);width:min(300px,calc(100vw - 32px));margin:0;font:11px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;letter-spacing:.08em;color:rgba(232,222,214,.6);text-shadow:0 0 6px rgba(0,0,0,.9);pointer-events:none}
+.cyc{position:relative;display:grid;grid-template-columns:1fr 1fr;border-top:1px solid rgba(232,222,214,.3)}
+.cyc span{padding-top:4px}
+.cyc span+span{border-left:1px solid rgba(232,222,214,.3);padding-left:6px}
+.cyc i{position:absolute;top:-4px;width:1px;height:7px;background:rgba(244,236,230,.9)}
+.clock p{margin:3px 0 0;white-space:pre-line}
+/* 読むための螺旋階段（寄った後）。「螺旋の雑誌」と同じ漆の地 */
+.rd{position:fixed;inset:0;width:100vw;height:100vh;display:block;z-index:5;opacity:0;pointer-events:none;background:#6e8cb4 url(mag/sea.jpg) center/cover no-repeat;touch-action:none}
+.rd.on{pointer-events:auto}
+.rd-back{position:fixed;left:16px;top:14px;z-index:6;font:11px/1.5 "IBM Plex Mono",ui-monospace,Menlo,monospace;letter-spacing:.08em;color:#e8e0cf;background:rgba(19,17,14,.72);border:1px solid rgba(207,197,180,.28);padding:6px 10px;cursor:pointer}
+.rd-back:hover{color:#eadfca;border-color:#7a6743}
+.rd-back[hidden]{display:none}
+.clock{z-index:7}
+/* トップへ戻る（左下に小さく、本人の指定 2026-10-15） */
+.home{position:fixed;left:max(16px,env(safe-area-inset-left,0px));bottom:max(14px,2.4vh);z-index:7;font:11px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;letter-spacing:.08em;color:rgba(232,222,214,.6);text-shadow:0 0 6px rgba(0,0,0,.9);text-decoration:none}
+.home:hover,.home:focus-visible{color:#e8e0cf;outline:none;text-decoration:underline;text-underline-offset:3px}
+body.rdmode .home,body.reading .home{visibility:hidden}
+@media (max-width:520px){.home{bottom:auto;top:max(14px,env(safe-area-inset-top,0px))}}  /* 狭い画面では下の時計と重ならないよう左上へ */
+body.rdmode .clock{background:rgba(19,17,14,.9);padding:6px 12px 8px;width:auto;max-width:calc(100vw - 32px);text-align:center}
+body.rdmode .cyc{display:none}
+/* 雑誌：左の螺旋の紙を押すと開く。「螺旋の雑誌」と同じ紙と、同じ漆と金の色 */
+.mag{--bg:#13110e;--fg:#e8e0cf;--muted:#9b917f;--line:#3b342b;--gold:#c9a45c;--gold-dim:#7a6743;--paper:#ebe4d4;position:fixed;inset:0;z-index:10;display:block;overflow-y:auto;overscroll-behavior:contain;padding:0 16px 56px;box-sizing:border-box;background:rgba(19,17,14,.97);color:#cfc5b4;font:11px/1.5 "IBM Plex Mono",ui-monospace,Menlo,monospace;letter-spacing:.06em;opacity:0;transition:opacity .45s ease}
+.mag[hidden]{display:none}
+.mag.on{opacity:1}
+.mag button{font:inherit;letter-spacing:inherit;color:inherit;background:none;border:0;padding:6px 8px;cursor:pointer}
+.mag button:hover:not(:disabled){color:#eadfca}
+.mag button:disabled{opacity:.3;cursor:default}
+.mag button:focus{outline:none}
+.mag button:focus-visible{outline:1px solid #b39a62;outline-offset:2px}
+body.reading .clock{visibility:hidden}
+.mag-bar,.mag-foot{display:flex;align-items:baseline;justify-content:space-between;gap:16px;width:min(760px,100%);margin:0 auto}
+.mag-bar{position:sticky;top:0;z-index:2;padding:14px 0 10px;background:rgba(19,17,14,.97)}
+.mag-foot{padding-top:10px}
+.mag-ad{color:#b39a62;white-space:nowrap}
+.mag-ti{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:"Shippori Mincho B1","Hiragino Mincho ProN","Yu Mincho",serif;font-size:14px;letter-spacing:.08em;color:#eadfca}
+.mag-body{display:flex;align-items:center;justify-content:center;gap:6px}
+.mag-paper{--ph:min(calc(100vh - 150px),calc((100vw - 120px) * 1.414));height:var(--ph);width:calc(var(--ph) / 1.414);background:#ebe4d4;box-shadow:0 18px 40px rgba(0,0,0,.55);transform:translateY(8px);transition:transform .55s ease}
+.mag.on .mag-paper{transform:none}
+.mag-paper iframe{display:block;width:100%;height:100%;border:0;background:#ebe4d4}
+.mag-nav{font-size:22px!important;padding:12px 10px!important;color:#b39a62!important}
+.mag-foot a{color:inherit;text-decoration:none;border-bottom:1px solid rgba(207,197,180,.3)}
+.mag-foot a:hover{color:#eadfca}
+/* 下へ送ると、「螺旋の雑誌」と同じ番地・方位（平面図）・立面図 */
+.mag-down{width:min(760px,100%);margin:18px auto 0;text-align:center;color:var(--muted);font-size:10px;letter-spacing:.14em}
+.mag-side{width:min(760px,100%);margin:28px auto 0;padding-top:22px;border-top:1px solid var(--line);display:grid;gap:22px}
+.mag-addr{display:flex;justify-content:space-between;align-items:baseline;gap:10px;font-size:16px;letter-spacing:.06em;color:var(--fg);border-bottom:1px solid var(--line);padding-bottom:8px}
+.mag-addr #mAng{font-size:12px;color:var(--gold)}
+.mag-navs{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.mag-navs button{background:#1b1814!important;border:1px solid var(--line)!important;padding:8px 10px!important;font-size:12px;text-align:center}
+.mag-navs button:hover:not(:disabled){border-color:var(--gold-dim)!important}
+.mag-figs{display:grid;grid-template-columns:1fr 1fr;gap:28px}
+.mag-figs figure{margin:0}
+.mag-figs svg{display:block;width:100%;height:auto}
+.mag-figs figcaption{font-size:11px;line-height:1.7;color:var(--muted);margin-top:6px;letter-spacing:.04em}
+.mag-figs figcaption b{color:var(--fg);font-weight:500}
+@media (max-width:640px){.mag-figs{grid-template-columns:1fr}.mag-navs{grid-template-columns:1fr 1fr}}
+@media (prefers-reduced-motion: reduce){.mag,.mag-paper{transition:none}}
+@media (prefers-reduced-motion: reduce){.frame img{transition:none}}
+</style>
+<div class="frame" id="frame">
+  <img id="still" src="top/still.jpg" alt="黒と赤の映画館。最後列からスクリーンの海を見る。宙に浮く三本の螺旋と鏡の玉、スクリーンの向こうの砂浜にも螺旋が立つ">
+  <canvas id="gl" aria-hidden="true"></canvas>
+  <canvas class="live" id="live" aria-hidden="true"></canvas>
+</div>
+<canvas class="rd" id="rd" aria-label="海を背にした、螺旋の雑誌の螺旋階段。← → で紙を巡り、押すと読む"></canvas>
+<button type="button" class="rd-back" id="rdBack" hidden>← 映画館へ</button>
+<div class="mag" id="mag" hidden role="dialog" aria-modal="true" aria-label="螺旋の雑誌">
+  <div class="mag-bar"><span class="mag-ad" id="magAd"></span><span class="mag-ti" id="magTi"></span><button type="button" id="magX">閉じる ×</button></div>
+  <div class="mag-body"><button type="button" class="mag-nav" id="magPrev" aria-label="前の紙">‹</button><div class="mag-paper" id="magPaper"><iframe id="magFrame" title="紙"></iframe></div><button type="button" class="mag-nav" id="magNext" aria-label="次の紙">›</button></div>
+  <div class="mag-foot"><button type="button" id="magHome">創刊へ</button><span id="magN"></span><a href="https://claude.ai/artifact/N89NgHzhS4BTPtXR8xBaB5" target="_blank" rel="noopener">BSS の号 ↗</a></div>
+  <p class="mag-down" aria-hidden="true">↓　方位と立面図</p>
+  <section class="mag-side" aria-label="番地と、方位・立面図">
+    <div class="mag-addr"><span id="mAddr"></span><span id="mAng"></span></div>
+    <div class="mag-navs"><button type="button" id="mPrev">← 前の紙</button><button type="button" id="mNext">次の紙 →</button><button type="button" id="mDown">↓ 一巡下</button><button type="button" id="mUp">↑ 一巡上</button></div>
+    <div class="mag-figs">
+      <figure><svg id="mPlan" viewBox="0 0 260 230" role="img" aria-label="平面図（方位）"></svg><figcaption id="mPlanCap"></figcaption></figure>
+      <figure><svg id="mElev" viewBox="0 0 260 300" role="img" aria-label="立面図"></svg><figcaption id="mElevCap"></figcaption></figure>
+    </div>
+  </section>
+</div>
+<a class="home" href="index.html">← Top</a>
+<div class="clock"><div class="cyc" aria-hidden="true"><span>昼　太陽</span><span>夜　目</span><i id="cycBar"></i></div><p id="clock"></p></div>
+<script>
+(function () {
+  'use strict';
+  /* 焼いた光の組を、時刻ごとの重みで足して映す。海の波・太陽・月・星・カーテン・羽・鳥は、その場で描く。
+     非常口を押すと映画館が崩れる。崩れたあとの場面（座席・螺旋・非常口だけが砂浜に残る）も光の組ごとに焼いてある。
+     崩れる途中は、壁・天井・床の破片（崩れる前の画を貼った板）を落としながら、二つの画を入れ替える */
+  var META = {"w":1440,"h":810,"ng":15,"nsun":10,"cam":{"eye":[11,4.2,-11.6],"pitch":0.10471975511965977,"f":250,"hy":135,"view":{"w":480,"h":270,"cx":240}},"S":{"W":22,"D":6,"H":10,"scr":{"x0":1.8,"x1":20.2,"y0":1,"y1":8.6},"shore":33,"sunEl":28,"rows":8,"rise":0.4,"zr":-12.4,"exitDoor":{"z0":3.4,"z1":4.8,"h":2.3}},"birds":[{"cx":11.132751440405846,"cz":34.633541900024284,"rx":9.09918356128037,"rz":5.049591780640185,"alt":6.127742291688919,"sp":-0.09,"ph":0.9543242939745546,"span":1.5291819899342953,"flap":2.547846880927682},{"cx":10.43588301897049,"cz":37.46384299980011,"rx":9.122574200853705,"rz":5.061287100426853,"alt":7.607796624838374,"sp":-0.12,"ph":0.08912089331721525,"span":1.7657075745984911,"flap":2.490339366346598},{"cx":15.045464247763158,"cz":36.07829149937956,"rx":8.974493511742914,"rz":4.987246755871457,"alt":7.925863103163428,"sp":-0.15,"ph":4.5139552932937,"span":1.7029330557212234,"flap":2.7899552935734393}],"balls":[{"x":8.86197370996656,"y":7.621245101362977,"z":2.0771574502191648,"r":0.23930109029170127},{"x":3.8853940438998364,"y":6.413571858255827,"z":5.403297124105235,"r":0.2458040972379968},{"x":10.919807212239311,"y":8.085827071049875,"z":1.6619552510295579,"r":0.26593611667631195},{"x":13.207092978795787,"y":7.286479716696844,"z":0.529942650289839,"r":0.26637011114740744},{"x":14.84,"y":6.63,"z":4.361299919349676,"r":0.255515442378819},{"x":9.48,"y":6.81,"z":3.617875842741006,"r":0.22636894697556273},{"x":7.79,"y":5.57,"z":1.0414385658589964,"r":0.2098792967107147}],"magp":[[6.5022,0.984,2.3488,-0.4448,0,0.8956,0.8518,-0.309,0.4231,0.42,0.588],[6.3152,1.068,2.5909,-0.7537,0,0.6572,0.625,-0.309,0.7168,0.42,0.588],[6.0499,1.152,2.7431,-0.9478,0,0.3187,0.3031,-0.309,0.9015,0.42,0.588],[5.7465,1.236,2.7822,-0.9977,0,-0.0682,-0.0649,-0.309,0.9488,0.42,0.588],[5.4512,1.32,2.7022,-0.8956,0,-0.4448,-0.4231,-0.309,0.8518,0.42,0.588],[5.2091,1.404,2.5152,-0.6572,0,-0.7537,-0.7168,-0.309,0.625,0.42,0.588],[5.0569,1.488,2.2499,-0.3187,0,-0.9478,-0.9015,-0.309,0.3031,0.42,0.588],[5.0178,1.572,1.9465,0.0682,0,-0.9977,-0.9488,-0.309,-0.0649,0.42,0.588],[5.0978,1.656,1.6512,0.4448,0,-0.8956,-0.8518,-0.309,-0.4231,0.42,0.588],[5.2848,1.74,1.4091,0.7537,0,-0.6572,-0.625,-0.309,-0.7168,0.42,0.588],[5.5501,1.824,1.2569,0.9478,0,-0.3187,-0.3031,-0.309,-0.9015,0.42,0.588],[5.8535,1.908,1.2178,0.9977,0,0.0682,0.0649,-0.309,-0.9488,0.42,0.588],[6.1488,1.992,1.2978,0.8956,0,0.4448,0.4231,-0.309,-0.8518,0.42,0.588],[6.3909,2.076,1.4848,0.6572,0,0.7537,0.7168,-0.309,-0.625,0.42,0.588],[6.5431,2.16,1.7501,0.3187,0,0.9478,0.9015,-0.309,-0.3031,0.42,0.588],[6.5822,2.244,2.0535,-0.0682,0,0.9977,0.9488,-0.309,0.0649,0.42,0.588],[6.5022,2.328,2.3488,-0.4448,0,0.8956,0.8518,-0.309,0.4231,0.42,0.588],[6.3152,2.412,2.5909,-0.7537,0,0.6572,0.625,-0.309,0.7168,0.42,0.588],[6.0499,2.496,2.7431,-0.9478,0,0.3187,0.3031,-0.309,0.9015,0.42,0.588],[5.7465,2.58,2.7822,-0.9977,0,-0.0682,-0.0649,-0.309,0.9488,0.42,0.588],[5.4512,2.664,2.7022,-0.8956,0,-0.4448,-0.4231,-0.309,0.8518,0.42,0.588],[5.2091,2.748,2.5152,-0.6572,0,-0.7537,-0.7168,-0.309,0.625,0.42,0.588],[5.0569,2.832,2.2499,-0.3187,0,-0.9478,-0.9015,-0.309,0.3031,0.42,0.588],[5.0178,2.916,1.9465,0.0682,0,-0.9977,-0.9488,-0.309,-0.0649,0.42,0.588],[5.0978,3,1.6512,0.4448,0,-0.8956,-0.8518,-0.309,-0.4231,0.42,0.588],[5.2848,3.084,1.4091,0.7537,0,-0.6572,-0.625,-0.309,-0.7168,0.42,0.588],[5.5501,3.168,1.2569,0.9478,0,-0.3187,-0.3031,-0.309,-0.9015,0.42,0.588],[5.8535,3.252,1.2178,0.9977,0,0.0682,0.0649,-0.309,-0.9488,0.42,0.588],[6.1488,3.336,1.2978,0.8956,0,0.4448,0.4231,-0.309,-0.8518,0.42,0.588],[6.3909,3.42,1.4848,0.6572,0,0.7537,0.7168,-0.309,-0.625,0.42,0.588],[6.5431,3.504,1.7501,0.3187,0,0.9478,0.9015,-0.309,-0.3031,0.42,0.588],[6.5822,3.588,2.0535,-0.0682,0,0.9977,0.9488,-0.309,0.0649,0.42,0.588],[6.5022,3.672,2.3488,-0.4448,0,0.8956,0.8518,-0.309,0.4231,0.42,0.588],[6.3152,3.756,2.5909,-0.7537,0,0.6572,0.625,-0.309,0.7168,0.42,0.588],[6.0499,3.84,2.7431,-0.9478,0,0.3187,0.3031,-0.309,0.9015,0.42,0.588],[5.7465,3.924,2.7822,-0.9977,0,-0.0682,-0.0649,-0.309,0.9488,0.42,0.588],[5.4512,4.008,2.7022,-0.8956,0,-0.4448,-0.4231,-0.309,0.8518,0.42,0.588],[5.2091,4.092,2.5152,-0.6572,0,-0.7537,-0.7168,-0.309,0.625,0.42,0.588],[5.0569,4.176,2.2499,-0.3187,0,-0.9478,-0.9015,-0.309,0.3031,0.42,0.588],[5.0178,4.26,1.9465,0.0682,0,-0.9977,-0.9488,-0.309,-0.0649,0.42,0.588],[5.0978,4.344,1.6512,0.4448,0,-0.8956,-0.8518,-0.309,-0.4231,0.42,0.588],[5.2848,4.428,1.4091,0.7537,0,-0.6572,-0.625,-0.309,-0.7168,0.42,0.588],[5.5501,4.512,1.2569,0.9478,0,-0.3187,-0.3031,-0.309,-0.9015,0.42,0.588],[5.8535,4.596,1.2178,0.9977,0,0.0682,0.0649,-0.309,-0.9488,0.42,0.588],[6.1488,4.68,1.2978,0.8956,0,0.4448,0.4231,-0.309,-0.8518,0.42,0.588],[6.3909,4.764,1.4848,0.6572,0,0.7537,0.7168,-0.309,-0.625,0.42,0.588],[6.5431,4.848,1.7501,0.3187,0,0.9478,0.9015,-0.309,-0.3031,0.42,0.588],[6.5822,4.932,2.0535,-0.0682,0,0.9977,0.9488,-0.309,0.0649,0.42,0.588]],"magax":{"x":5.8,"z":2,"a0":0.4609975027392468,"dir":1,"per":16,"rise":0.08399999999999999,"y0":0.9,"n":48,"rc":0.7839999999999999},"zrot":{"crop":[504,0,400,810]},"mag":{"lap":12,"sheets":[{"id":"001","k":"BSS 表紙","t":"BSS　僕が先に好きだったのに","d":"2026-10-13"},{"id":"002","k":"BSS 序","t":"序　なぜ、愛を書くのか","d":"2026-10-13"},{"id":"003","k":"BSS 0","t":"0　初めてのBSS","d":"2026-10-13"},{"id":"004","k":"BSS 1","t":"1　恋に恋する","d":"2026-10-13"},{"id":"005","k":"BSS 2","t":"2　感嘆","d":"2026-10-13"},{"id":"006","k":"BSS 3","t":"3　想像","d":"2026-10-13"},{"id":"007","k":"BSS 4","t":"4　希望（恋に落ちる）","d":"2026-10-13"},{"id":"008","k":"BSS 5","t":"5　恋が動き出す（一）","d":"2026-10-13"},{"id":"009","k":"BSS 5","t":"5　恋が動き出す（二）","d":"2026-10-13"},{"id":"010","k":"BSS 6","t":"6　第一の結晶作用","d":"2026-10-13"},{"id":"011","k":"BSS 7","t":"7　疑い（一）","d":"2026-10-13"},{"id":"012","k":"BSS 7","t":"7　疑い（二）","d":"2026-10-13"},{"id":"013","k":"BSS 8","t":"8　第二の結晶作用","d":"2026-10-13"},{"id":"014","k":"BSS 9","t":"9　詩とキス","d":"2026-10-13"},{"id":"015","k":"BSS 奥付","t":"奥付　参考文献","d":"2026-10-13"}]},"camz":{"eye":[5.9,3.5,-3.9],"pitch":0.093,"f":290,"hy":135,"view":{"w":480,"h":270,"cx":240},"focus":6},"stars":[[-9,3.2,0.34],[-3.5,6.5,0.12],[2.5,4.4,0.22],[8,7.6,0.07],[11.5,2.4,0.16],[-6,16,0.1],[4,24,0.26],[-1,33,0.05],[-7,6.5,1.1]],"moon":[-7,6.5],"k":{"sky":1,"sun":1,"nsky":0.015,"night":0.25,"spot":0.3,"exit":0.3,"key":0.2,"adapt":0.7,"screen":0.2,"sunDisc":10,"star":1,"moon":0.5,"curtain":1,"maxAdapt":14,"maxAdaptB":5,"closeAdapt":3},"start":18};
+  var W = META.w, H = META.h, NG = META.ng, NS = META.nsun, S = META.S, C = META.cam, V = C.view, TAU = Math.PI * 2, PXK = W / V.w;
+  var frame = document.getElementById('frame'), cv = document.getElementById('gl'), live = document.getElementById('live'), still = document.getElementById('still');
+  var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var cp = Math.cos(C.pitch), sp = Math.sin(C.pitch), F = [0, -sp, cp], U = [0, cp, sp];
+  function projC0(q) { return proj(q[0], q[1], q[2]); }
+  function proj(x, y, z) { var dx = x - C.eye[0], dy = y - C.eye[1], dz = z - C.eye[2], cz = dy * F[1] + dz * F[2], cy = dy * U[1] + dz * U[2]; return {x: V.cx + dx / cz * C.f, y: C.hy - cy / cz * C.f, s: C.f / cz, z: cz}; }
+  function ss(a, b, x) { x = Math.max(0, Math.min(1, (x - a) / (b - a))); return x * x * (3 - 2 * x); }
+  function mix3(a, b, t) { return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t]; }
+
+  /* ── 時刻：昼一分、夜一分 ── */
+  var DAY = 60, NIGHT = 60, CYCLE = DAY + NIGHT, T0 = performance.now(), TFIX = null;
+  var K = META.k;   /* 組ごとの明るさの釣り合い */
+  var W1 = [1, 1, 1], WARM = [1.15, .8, .58], MOONT = [.62, .74, 1.15], SUNLOW = [1, .58, .32], START = [.82, .88, 1.12];
+  function sunPathDir(m) { var az = (-14 + 28 * m) * Math.PI / 180, el = (2 + S.sunEl * Math.sin(Math.PI * m)) * Math.PI / 180; return [Math.sin(az) * Math.cos(el), Math.sin(el), Math.cos(az) * Math.cos(el)]; }
+  function starToward(a, sh) { var az = (a[0] + sh) * Math.PI / 180, el = a[1] * Math.PI / 180; return [Math.sin(az) * Math.cos(el), Math.sin(el), Math.cos(az) * Math.cos(el)]; }
+  function state(t) {
+    var tc = ((t % CYCLE) + CYCLE) % CYCLE, w = new Float32Array(NG * 3), o = {tc: tc, w: w, day: tc < DAY, sun: 0, sunDir: null, sunTint: W1, starI: 0, starPos: 0, skyW: 0, skyTint: W1, adapt: 0};
+    var put = function (g, k, tint) { w[g * 3] += k * tint[0]; w[g * 3 + 1] += k * tint[1]; w[g * 3 + 2] += k * tint[2]; };
+    var setStars = function (pos, I) { put(NS + 1, K.night * I * (1 - pos), START); put(NS + 2, K.night * I * pos, START); o.starI = I; o.starPos = pos; };
+    if (tc < DAY) {
+      var u = tc / DAY, dawn = ss(0, .32, u), dusk = ss(.66, 1, u), dl = ss(0, .3, u) * (1 - dusk), low = 1 - Math.sin(Math.PI * u);
+      o.skyW = K.nsky + (1 - K.nsky) * dl; o.skyTint = mix3(mix3(W1, WARM, low * low * .85), MOONT, 1 - dl); put(0, K.sky * o.skyW, o.skyTint);
+      var sunI = ss(.03, .32, u) * (1 - ss(.68, 1, u)), su = u * (NS - 1), k0 = Math.min(NS - 2, Math.floor(su)), fr = su - k0, st = mix3(W1, SUNLOW, Math.pow(low, 1.5));
+      put(1 + k0, K.sun * sunI * (1 - fr), st); put(2 + k0, K.sun * sunI * fr, st); o.sun = sunI; o.sunDir = sunPathDir(u); o.sunTint = st;
+      if (u < .32) setStars(1, 1 - dawn); else if (u > .66) setStars(0, dusk);
+      put(NS + 3, K.spot * dl, [1, .9, .78]); o.adapt = 1 - dl;
+    } else {
+      var n = (tc - DAY) / NIGHT; o.skyW = K.nsky; o.skyTint = MOONT; put(0, K.sky * K.nsky, MOONT); setStars(n, 1); o.adapt = 1;
+    }
+    put(NS + 4, K.exit, W1);
+    return o;
+  }
+
+  /* ── 二つの場面：A 崩れる前（top/）、B 崩れたあと（top2/） ── */
+  function mkSet(dir) { var s = {dir: dir, names: [], raws: [], n: 0, ok: false, MEAN: new Float32Array(NG), MEANF: new Float32Array(NG), DEPTH: null, FLAG: null, KEY: 1, EMAX: 1e9};
+    for (var g = 0; g < NG; g++) s.names.push(dir + '/g' + (g < 10 ? '0' : '') + g + '.png'); for (var e = 0; e < Math.ceil(NG / 3); e++) s.names.push(dir + '/e' + e + '.png'); s.names.push(dir + '/aux.png'); return s; }
+  var A = mkSet('top'), B = mkSet('top2'), CURB = [];
+  function load(src, cb) { var im = new Image(); im.decoding = 'async'; im.onload = function () { cb(im); }; im.onerror = function () { cb(null); }; im.src = src; }
+
+  /* ── WebGL2 ── */
+  var gl = cv.getContext('webgl2', {antialias: false, premultipliedAlpha: false, preserveDrawingBuffer: false}), X = null;
+  if (!gl) { still.style.opacity = 1; return; }
+  cv.width = W; cv.height = H;
+  var VS = '#version 300 es\nin vec2 a;void main(){gl_Position=vec4(a,0.,1.);}';
+  var FA = ['#version 300 es', 'precision highp float;precision highp int;precision highp sampler2DArray;precision highp sampler2D;',
+    'uniform sampler2DArray uG,uE;uniform sampler2D uAux;uniform vec3 uW[' + NG + '];uniform int uH;',
+    'uniform vec4 uCam;uniform vec3 uF,uU,uEye,uSunV,uSunC,uSkyT,uCurN;uniform vec4 uMoon,uSt[9],uCurX,uCurY;uniform float uTime,uShore,uSkyW,uFc,uCurOn,uCurK;uniform vec3 uCurB[4];out vec4 o;',
+    'float hs(vec2 q){return fract(sin(dot(q,vec2(127.1,311.7)))*43758.5453);}',
+    'float vn(vec2 q){vec2 i=floor(q),f=fract(q);f=f*f*(3.-2.*f);return mix(mix(hs(i),hs(i+vec2(1,0)),f.x),mix(hs(i+vec2(0,1)),hs(i+vec2(1,1)),f.x),f.y);}',
+    'vec3 dec(int g,ivec2 p){vec3 m=texelFetch(uG,ivec3(p,g),0).rgb*255.;vec3 ee=texelFetch(uE,ivec3(p,g/3),0).rgb*255.;float e=g%3==0?ee.r:g%3==1?ee.g:ee.b;if(e<1.)return vec3(0.);return m*exp2(e-128.)/255.99;}',
+    'vec3 skyB(vec3 d){float t=pow(max(d.y,0.),.38);return mix(vec3(.5,.66,.9),vec3(.15,.33,.78),t)*.75;}',
+    'vec3 waveN(vec2 q,float T,float fd){vec2 g=vec2(0.);',
+    ' g+=.06*vec2(.05,.9)*cos(dot(q,vec2(.05,.9))+T*1.3+.6*sin(q.x*.21+T*.2));g+=.025*vec2(.6,.35)*cos(dot(q,vec2(.6,.35))+T*1.9);g+=.02*vec2(-.45,.7)*cos(dot(q,vec2(-.45,.7))+T*2.3);',
+    ' g+=fd*.009*vec2(1.7,1.1)*cos(dot(q,vec2(1.7,1.1))+T*3.1);g+=fd*.007*vec2(-1.3,2.1)*cos(dot(q,vec2(-1.3,2.1))+T*3.7);g+=fd*.004*vec2(3.1,2.6)*cos(dot(q,vec2(3.1,2.6))+T*4.6);',
+    ' return normalize(vec3(-g.x*3.,1.,-g.y*3.));}',
+    'void main(){ivec2 f=ivec2(gl_FragCoord.xy);ivec2 p=ivec2(f.x,uH-1-f.y);vec3 L=vec3(0.);',
+    ' for(int g=0;g<' + NG + ';g++)L+=uW[g]*dec(g,p);',
+    ' vec3 ax=texelFetch(uAux,p,0).rgb*255.;float dep=(ax.r*256.+ax.g)/100.;float fl=ax.b;',
+    ' vec3 dv=uF+vec3(1.,0.,0.)*(((float(p.x)+.5)*uCam.x-uCam.y)/uCam.w)+uU*(-((float(p.y)+.5)*uCam.x-uCam.z)/uCam.w);vec3 dn=normalize(dv);float pxa=uCam.x/uCam.w,T=uTime;',
+    /* 空：太陽の円とまわりの明るさ、満月、星 */
+    ' if(fl>1.5&&fl<2.5){vec3 pt=vec3(0.);float th;L*=vec3(.86,.93,1.07);',
+    '  if(uSunC.x+uSunC.y>0.){float sd=max(dot(dn,uSunV),0.);th=acos(clamp(dot(dn,uSunV),-1.,1.));pt+=uSunC*clamp((.0085-th)/pxa+.5,0.,1.)*40.+uSunC*(.12*pow(sd,8.)+.9*pow(sd,180.));}',
+    '  if(uMoon.w>0.){th=acos(clamp(dot(dn,uMoon.xyz),-1.,1.));float md=clamp((.0095-th)/pxa+.5,0.,1.);vec2 mq=vec2(dot(dn,vec3(1.,0.,0.)),dot(dn,uU))*900.;pt+=vec3(.95,.95,.9)*uMoon.w*md*(.82+.18*vn(mq))+vec3(.6,.68,.85)*uMoon.w*.004*pow(max(dot(dn,uMoon.xyz),0.),60.);}',
+    '  for(int k=0;k<9;k++){vec4 sv=uSt[k];if(sv.w<=0.)continue;th=acos(clamp(dot(dn,sv.xyz),-1.,1.));pt+=vec3(.9,.95,1.1)*sv.w*clamp(1.-th/(pxa*1.4),0.,1.);}',
+    '  L+=pt*uFc;}',
+    /* 海：波の陰影と、太陽・月のきらめき、波打ち際の泡（焼いた明るさに掛ける） */
+    ' if(fl>2.5&&fl<3.5){vec3 hp=uEye+dn*(dep/max(dot(dn,uF),1e-3));float dist=length(hp-uEye),fd=exp(-dist/90.);vec3 n=waveN(hp.xz,T,fd);vec3 r=reflect(dn,n);r.y=abs(r.y);',
+    '  float F=.02+.98*pow(1.-max(dot(-dn,n),0.),5.);L=L*(.85+.3*n.y)+F*skyB(r)*vec3(.92,.96,1.04)*uSkyT*uSkyW*uFc;',
+    '  if(uSunC.x+uSunC.y>0.)L+=uSunC*.6*pow(max(dot(r,uSunV),0.),900.)*uFc;if(uMoon.w>0.)L+=vec3(.8,.85,.95)*uMoon.w*.25*pow(max(dot(r,uMoon.xyz),0.),700.)*uFc;',
+    '  float d=hp.z-uShore,fo=exp(-d/4.)*.85+exp(-d/14.)*pow(.5+.5*sin(d*1.25-T*1.5+.8*sin(hp.x*.27+T*.3)),10.)*(.55+.45*vn(hp.xz*vec2(.8,2.)));fo*=.6+.4*vn(hp.xz*vec2(3.,1.5)+T*.2);',
+    '  L=mix(L,uSkyT*uSkyW*.9*uFc,clamp(fo,0.,1.)*fd*.85);}',
+    /* 砂：波打ち際の濡れと、寄せては返す白い線 */
+    ' if(fl>4.5){vec3 hp=uEye+dn*(dep/max(dot(dn,uF),1e-3));float sw=uShore-1.+.9*sin(T*.45+hp.x*.05);L*=1.-.35*smoothstep(sw-1.2,sw,hp.z);L=mix(L,uSkyT*uSkyW*.85*uFc,smoothstep(sw-.25,sw,hp.z)*(1.-smoothstep(sw,sw+.5,hp.z))*.7);}',
+    /* カーテン：両脇に寄せた幕そのもの（焼いた幕のすぐ手前の面）。閉じると、同じ幕が真ん中まで引かれる。
+       ひだの数は一定で、寄せると細かく、引くと広がる */
+    ' if(uCurOn>0.){float tc=(uCurY.y-uEye.z)/dv.z;if(tc>0.){vec3 cp=uEye+dv*tc;float dz=tc*dot(dv,uF);',
+    '  if(dep>dz-.05&&cp.y>0.&&cp.y<uCurY.x){float pw=tc*pxa,cl=clamp((uCurX.y-cp.x)/pw+.5,0.,1.)*clamp((cp.x-uCurX.x)/pw+.5,0.,1.),cq=clamp((cp.x-uCurX.z)/pw+.5,0.,1.)*clamp((uCurX.w-cp.x)/pw+.5,0.,1.),cv=max(cl,cq);',
+    '   if(cv>0.){bool lf=cp.x<(uCurY.z+uCurY.w)*.5;float wv=lf?uCurX.y-uCurX.x:uCurX.w-uCurX.z,de=lf?uCurX.y-cp.x:cp.x-uCurX.z,per=wv/uCurN.x,ph=de/per*6.2832+1.2+.35*sin(de/per*2.1+cp.y*.21);',
+    '    float cs=cos(ph),sl=uCurN.y/per*6.2832*cs,nv=inversesqrt(1.+sl*sl),ao=.6+.4*(.5+.5*sin(ph)),shd=(nv*(1.+.35*sl*nv)*ao+.5*(1.-nv)*(1.-nv))/uCurN.z;',
+    '    vec3 cb=mix(uCurB[0],uCurB[1],smoothstep(.6,2.1,cp.y));cb=mix(cb,uCurB[2],smoothstep(2.1,4.5,cp.y));cb=mix(cb,uCurB[3],smoothstep(4.5,8.,cp.y));',
+    '    vec3 cu=uCurK*cb*shd*(1.-.3*exp(-de*6.));L=mix(L,cu,cv);}}}}',
+    ' o=vec4(L,1.);}'].join('\n');
+  /* 二つの画を混ぜる：崩れる物の所は崩れたあとの画、残る物の所は光が移るにつれて。崩れる途中は土ぼこりの霞をかける */
+  var FM = ['#version 300 es', 'precision highp float;precision highp sampler2D;', 'uniform sampler2D uA,uB,uR,uAuxA,uAuxB;uniform float uLT,uLT2,uRT,uVeil;uniform vec3 uDust;uniform int uH;out vec4 o;',
+    'void main(){ivec2 f=ivec2(gl_FragCoord.xy),p=ivec2(f.x,uH-1-f.y);vec3 a=texelFetch(uA,f,0).rgb,b=texelFetch(uB,f,0).rgb;vec4 m=texelFetch(uR,p,0);float fa=texelFetch(uAuxA,p,0).b*255.;',
+    ' float lt=fa>.5&&(fa<3.5||fa>4.5)?uLT2:uLT;vec3 L;',
+    /* 鏡の玉や吊る線のあった所：すぐ外の画素の、二つの画の比で、玉のない画を作る */
+    ' if(m.r>.75)L=mix(a,b,uRT);else if(m.r>.25){ivec2 d=ivec2(floor(m.ba*255.+.5))-128;ivec2 q=f+ivec2(d.x,-d.y);vec3 k=clamp(texelFetch(uA,q,0).rgb/max(texelFetch(uB,q,0).rgb,vec3(1e-5)),0.,4.);L=b*mix(k,vec3(1.),uLT2);}else L=mix(a,b,lt);',
+    ' vec3 ax=texelFetch(uAuxB,p,0).rgb*255.;float dep=(ax.r*256.+ax.g)/100.;L=mix(L,uDust,uVeil*smoothstep(5.,13.,dep)*(1.-.6*smoothstep(30.,80.,dep)));o=vec4(L,1.);}'].join('\n');
+  /* 寄る途中：最後列の画を、左の螺旋へ向けて拡げる */
+  var FZ = ['#version 300 es', 'precision highp float;precision highp sampler2D;', 'uniform sampler2D uM;uniform vec2 uS0,uS1,uRes;uniform float uE,uR;out vec4 o;',
+    'void main(){vec2 p=gl_FragCoord.xy/uRes,c=mix(uS0,uS1,uE);float sc=mix(1.,uR,uE);o=vec4(texture(uM,clamp(uS0+(p-c)/sc,0.,1.)).rgb,1.);}'].join('\n');
+  /* 崩れる前の画から、鏡の玉と吊る線を抜く（破片に貼る画） */
+  var FI = ['#version 300 es', 'precision highp float;precision highp sampler2D;', 'uniform sampler2D uS,uR;uniform int uH;out vec4 o;',
+    'void main(){ivec2 f=ivec2(gl_FragCoord.xy),p=ivec2(f.x,uH-1-f.y);vec4 m=texelFetch(uR,p,0);ivec2 d=ivec2(floor(m.ba*255.+.5))-128;o=texelFetch(uS,f+ivec2(d.x,-d.y),0);}'].join('\n');
+  /* 破片：今の位置で描き、色は元の位置の、崩れる前の画から取る（壁の向こうに残る物の所は抜く） */
+  var VP = ['#version 300 es', 'in vec3 aP;in vec3 aP0;in vec3 aN;in vec4 aAS;uniform vec3 uEye,uF,uU;uniform vec4 uV;out vec3 vP0;out vec3 vP;out vec3 vN;out vec4 vAS;',
+    'void main(){vec3 d=aP-uEye;float cz=dot(d,uF),cy=dot(d,uU);vec2 s=vec2(uV.x+d.x/cz*uV.z,uV.y-cy/cz*uV.z);vec2 n=vec2(s.x/uV.w*2.-1.,1.-s.y/(uV.w*' + (V.h / V.w) + ')*2.);gl_Position=vec4(n*cz,cz-.2,cz);vP0=aP0;vP=aP;vN=aN;vAS=aAS;}'].join('\n');
+  var FP = ['#version 300 es', 'precision highp float;precision highp sampler2D;', 'uniform sampler2D uSnap,uMask,uAuxB;uniform vec3 uEye,uF,uU,uAmb,uSunV;uniform vec4 uV;uniform int uH;in vec3 vP0;in vec3 vP;in vec3 vN;in vec4 vAS;out vec4 o;',
+    'void main(){vec3 d=vP0-uEye;float cz=dot(d,uF),cy=dot(d,uU);vec2 s=vec2(uV.x+d.x/cz*uV.z,uV.y-cy/cz*uV.z)/vec2(uV.w,uV.w*' + (V.h / V.w) + ');',
+    ' vec2 sc=clamp(s,vec2(.0004),vec2(.9996));bool inside=s.x>0.&&s.x<1.&&s.y>0.&&s.y<1.;if(vAS.y>=0.&&inside&&texture(uMask,sc).g<.5)discard;',
+    ' ivec2 f=ivec2(gl_FragCoord.xy);vec3 ax=texelFetch(uAuxB,ivec2(f.x,uH-1-f.y),0).rgb*255.;float dep=(ax.r*256.+ax.g)/100.;if((vAS.z>.5||vAS.y<0.)&&dot(vP-uEye,uF)>dep+.08)discard;',
+    /* 裏が見えたら、外の光を受けたコンクリートの面 */
+    ' vec3 n=normalize(vN),c;if(vAS.y<0.){c=uAmb*.62*(.38*(.55+.45*n.y)+.5*max(dot(n,uSunV),0.))*(.8+.2*fract(sin(dot(floor(vP.xz*9.+vP.y*7.),vec2(12.9,78.2)))*43758.5));}',
+    ' else c=texture(uSnap,vec2(sc.x,1.-sc.y)).rgb*vAS.y+uAmb*.05*(.5+.5*n.y)*vAS.w;o=vec4(c,vAS.x);}'].join('\n');
+  /* 鏡の玉：元の玉の画を、今の位置と大きさに */
+  var VO = ['#version 300 es', 'in vec2 aQ;uniform vec4 uB1;uniform vec2 uR;out vec2 vPx;', 'void main(){vPx=uB1.xy+aQ*(uB1.z+1.5);gl_Position=vec4(vPx.x/uR.x*2.-1.,1.-vPx.y/uR.y*2.,0.,1.);}'].join('\n');
+  var FO = ['#version 300 es', 'precision highp float;precision highp sampler2D;', 'uniform sampler2D uSnap,uAuxB;uniform vec4 uB0,uB1;uniform vec2 uR;uniform int uH;in vec2 vPx;out vec4 o;',
+    'void main(){vec2 off=(vPx-uB1.xy)/uB1.z;float l=length(off);if(l>1.+1./uB1.z)discard;',
+    ' ivec2 f=ivec2(gl_FragCoord.xy);vec3 ax=texelFetch(uAuxB,ivec2(f.x,uH-1-f.y),0).rgb*255.;float dep=(ax.r*256.+ax.g)/100.;if(uB1.w>dep+.1)discard;',
+    ' vec2 q=(uB0.xy+off*uB0.z)/uR;o=vec4(texture(uSnap,vec2(q.x,1.-q.y)).rgb,clamp((1.-l)*uB1.z+.5,0.,1.));}'].join('\n');
+  /* 明るい所だけを 1/4 に縮めて取り出し（D）、横と縦にぼかし（BL）、仕上げ（FB）で重ねる */
+  var FD = ['#version 300 es', 'precision highp float;', 'uniform sampler2D uC;uniform float uExpo;uniform vec2 uR;out vec4 o;',
+    'void main(){vec2 uv=gl_FragCoord.xy/uR;vec3 s=vec3(0.);for(int j=0;j<4;j++)for(int i=0;i<4;i++){vec2 q=uv+(vec2(float(i),float(j))-1.5)/(uR*4.);s+=texture(uC,q).rgb;}s=s/16.*uExpo;o=vec4(min(max(s-.9,0.),vec3(4.)),1.);}'].join('\n');
+  var FBL = ['#version 300 es', 'precision highp float;', 'uniform sampler2D uC;uniform vec2 uR,uD;out vec4 o;',
+    'void main(){vec2 uv=gl_FragCoord.xy/uR;vec3 s=vec3(0.);float ws=0.;for(int k=-12;k<=12;k++){float w=exp(-float(k*k)/50.);s+=texture(uC,uv+uD*float(k)/uR).rgb*w;ws+=w;}o=vec4(s/ws,1.);}'].join('\n');
+  var FB = ['#version 300 es', 'precision highp float;', 'uniform sampler2D uC,uBl;uniform float uExpo,uT,uSat;uniform vec2 uR;out vec4 o;',
+    'float h2(vec2 q){return fract(sin(dot(q,vec2(12.9898,78.233)))*43758.5453);}',
+    'vec3 aces(vec3 x){return clamp((x*(2.51*x+.03))/(x*(2.43*x+.59)+.14),0.,1.);}',
+    'void main(){vec2 uv=gl_FragCoord.xy/uR;vec3 c=texture(uC,uv).rgb*uExpo;',
+    /* にじみ（明るい所のまわりに、暖かい光が広がる） */
+    ' c+=texture(uBl,uv).rgb*vec3(1.,.74,.58)*.35;',
+    ' vec2 d=uv-.5;c*=1.-.3*dot(d,d)*2.2;',
+    ' c=aces(c);float l=dot(c,vec3(.2126,.7152,.0722));c=mix(vec3(l),c,uSat);',
+    ' c=pow(c,vec3(1./2.2));float g=h2(gl_FragCoord.xy+fract(uT*7.13)*97.)-.5;c+=g*.035*(1.-c*.7);',
+    ' o=vec4(c,1.);}'].join('\n');
+  function sh(type, src) { var s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s); if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s)); return s; }
+  function prog(fs, vs, at) { var p = gl.createProgram(); gl.attachShader(p, sh(gl.VERTEX_SHADER, vs || VS)); gl.attachShader(p, sh(gl.FRAGMENT_SHADER, fs)); (at || ['a']).forEach(function (n, i) { gl.bindAttribLocation(p, i, n); }); gl.linkProgram(p); if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p)); return p; }
+  var hdrOK = false;
+  function tex2(w, h, fmt, lin) { var t = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, t); gl.texStorage2D(gl.TEXTURE_2D, 1, fmt, w, h); var fl = lin ? gl.LINEAR : gl.NEAREST; gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, fl); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, fl); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE); return t; }
+  function hdrFb(w, h) { var t = tex2(w, h, hdrOK ? gl.RGBA16F : gl.RGBA8, true), f = gl.createFramebuffer(); gl.bindFramebuffer(gl.FRAMEBUFFER, f); gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, t, 0); gl.bindFramebuffer(gl.FRAMEBUFFER, null); return {t: t, f: f}; }
+  function arr(n) { var t = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D_ARRAY, t); gl.texStorage3D(gl.TEXTURE_2D_ARRAY, 1, gl.RGB8, W, H, n); gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_MIN_FILTER, gl.NEAREST); gl.texParameteri(gl.TEXTURE_2D_ARRAY, gl.TEXTURE_MAG_FILTER, gl.NEAREST); return t; }
+  function setTex(s) { s.G = arr(NG); s.E = arr(Math.ceil(NG / 3)); s.aux = tex2(W, H, gl.RGB8, false); }
+  try {
+    X = {pA: prog(FA), pB: prog(FB), pD: prog(FD), pL: prog(FBL), pM: prog(FM), pP: prog(FP, VP, ['aP', 'aP0', 'aN', 'aAS']), pO: prog(FO, VO, ['aQ']), pI: prog(FI), pZ: prog(FZ)};
+    X.vao = gl.createVertexArray(); gl.bindVertexArray(X.vao); var vb = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, vb); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW); gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+    X.dvao = gl.createVertexArray(); gl.bindVertexArray(X.dvao); X.dvb = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, X.dvb); [3, 3, 3, 4].forEach(function (n, i) { gl.enableVertexAttribArray(i); gl.vertexAttribPointer(i, n, gl.FLOAT, false, 52, [0, 12, 24, 36][i]); });
+    X.bvao = gl.createVertexArray(); gl.bindVertexArray(X.bvao); var bq = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, bq); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, 1, 1, -1, -1, 1, 1, -1, 1]), gl.STATIC_DRAW); gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+    gl.bindVertexArray(null);
+    gl.pixelStorei(gl.UNPACK_COLORSPACE_CONVERSION_WEBGL, gl.NONE); gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false); gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false); gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
+    setTex(A);
+    hdrOK = !!(gl.getExtension('EXT_color_buffer_float') || gl.getExtension('EXT_color_buffer_half_float'));
+    var m = hdrFb(W, H); X.col = m.t; X.fb = m.f;
+    X.qw = Math.ceil(W / 4); X.qh = Math.ceil(H / 4); X.q = [hdrFb(X.qw, X.qh), hdrFb(X.qw, X.qh)];
+  } catch (err) { X = null; still.style.opacity = 1; console.warn(err); return; }
+  function u(p, n) { var c = p.__u || (p.__u = {}); if (!(n in c)) c[n] = gl.getUniformLocation(p, n); return c[n]; }
+
+  /* 画像を読んで組の配列に入れ、部屋の平均の明るさ（露出のため）と、奥行き・印を読む */
+  var scratch = document.createElement('canvas'); scratch.width = W; scratch.height = H; var sctx = scratch.getContext('2d', {willReadFrequently: true});
+  function loadSet(s, done) { var ne = Math.ceil(NG / 3);
+    s.names.forEach(function (src, i) { load(src, function (im) {
+      if (!im) return;
+      if (i < NG) { gl.bindTexture(gl.TEXTURE_2D_ARRAY, s.G); gl.texSubImage3D(gl.TEXTURE_2D_ARRAY, 0, 0, 0, i, W, H, 1, gl.RGB, gl.UNSIGNED_BYTE, im); }
+      else if (i < NG + ne) { gl.bindTexture(gl.TEXTURE_2D_ARRAY, s.E); gl.texSubImage3D(gl.TEXTURE_2D_ARRAY, 0, 0, 0, i - NG, W, H, 1, gl.RGB, gl.UNSIGNED_BYTE, im); }
+      else { gl.bindTexture(gl.TEXTURE_2D, s.aux); gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, W, H, gl.RGB, gl.UNSIGNED_BYTE, im); }
+      sctx.clearRect(0, 0, W, H); sctx.drawImage(im, 0, 0); s.raws[i] = sctx.getImageData(0, 0, W, H).data;
+      if (++s.n === s.names.length) { analyze(s); done(); }
+    }); }); }
+  function wts(st, s, ev) { var fc = 1 - ev + ev * .012, ww = new Float32Array(NG * 3);
+    for (var g = 0; g < NG; g++) { var k = s === B ? (g === NG - 2 ? 0 : 1) : g === NG - 1 ? 1 : g === NG - 2 ? .5 + .5 * fc : fc; ww[g * 3] = st.w[g * 3] * k; ww[g * 3 + 1] = st.w[g * 3 + 1] * k; ww[g * 3 + 2] = st.w[g * 3 + 2] * k; }
+    return ww; }   /* 常夜灯は消えない。後ろの光は幕に遮られない分が残る。崩れたあとは後ろの光（映写室）もない */
+  function lumW(ww, M) { var s = 0; for (var g = 0; g < NG; g++) s += (.2126 * ww[g * 3] + .7152 * ww[g * 3 + 1] + .0722 * ww[g * 3 + 2]) * M[g]; return Math.max(1e-6, s); }
+  function analyze(s) {
+    var R = s.raws, Ax = R[R.length - 1]; s.DEPTH = new Float32Array(W * H); s.FLAG = new Uint8Array(W * H);
+    for (var p = 0; p < W * H; p++) { s.DEPTH[p] = (Ax[p * 4] * 256 + Ax[p * 4 + 1]) / 100; s.FLAG[p] = Ax[p * 4 + 2]; }
+    /* 部屋の点（印 0）と、映画の世界（空・海・砂）の点で、組ごとの平均の明るさ */
+    for (var g = 0; g < NG; g++) { var M = R[g], E = R[NG + Math.floor(g / 3)], ch = g % 3, sr = 0, n = 0, sf = 0, nf = 0;
+      for (var q = 0; q < W * H; q += 3) { var e = E[q * 4 + ch], k = e < 1 ? 0 : Math.pow(2, e - 128) / 255.99, l = (.2126 * M[q * 4] + .7152 * M[q * 4 + 1] + .0722 * M[q * 4 + 2]) * k, fl = s.FLAG[q]; if (!fl) { sr += l; n++; } else if (fl === 2 || fl === 3 || fl === 5) { sf += l; nf++; } }
+      s.MEAN[g] = sr / Math.max(1, n); s.MEANF[g] = sf / Math.max(1, nf); }
+    if (s === A) {
+      /* カーテンの明るさは、焼いた両脇の幕（同じビロード、同じ面）から高さの帯ごとに拾う */
+      var Q = S.scr, zc0 = S.D - .3 - .065, BY = [0, 1.2, 3, 6, Q.y1 + 1.1];
+      for (var b = 0; b < 4; b++) { var acc = new Float64Array(NG * 3), cnt = 0;
+        for (var sx = 0; sx < 2; sx++) for (var ix = 0; ix < 24; ix++) for (var iy = 0; iy < 10; iy++) {
+          var xw = sx ? Q.x1 + .3 + 1.1 * (ix + .5) / 24 : Q.x0 - 1.4 + 1.1 * (ix + .5) / 24, yw = BY[b] + (BY[b + 1] - BY[b]) * (iy + .5) / 10, pp = proj(xw, yw, zc0);
+          var pi = Math.floor(pp.x * PXK), pj = Math.floor(pp.y * PXK); if (pi < 0 || pj < 0 || pi >= W || pj >= H) continue; var qq = pj * W + pi;
+          if (s.FLAG[qq] || Math.abs(s.DEPTH[qq] - pp.z) > .5) continue; cnt++;
+          for (var g4 = 0; g4 < NG; g4++) { var M4 = R[g4], E4 = R[NG + Math.floor(g4 / 3)], e4 = E4[qq * 4 + g4 % 3], k4 = e4 < 1 ? 0 : Math.pow(2, e4 - 128) / 255.99; acc[g4 * 3] += M4[qq * 4] * k4; acc[g4 * 3 + 1] += M4[qq * 4 + 1] * k4; acc[g4 * 3 + 2] += M4[qq * 4 + 2] * k4; } }
+        CURB[b] = cnt ? Float32Array.from(acc, function (v) { return v / cnt; }) : null; }
+      for (var b2 = 0; b2 < 4; b2++) if (!CURB[b2]) CURB[b2] = CURB[b2 + 1] || CURB[b2 - 1] || new Float32Array(NG * 3);
+    }
+    var Ld = lumW(wts(state(30), s, 0), s.MEAN); s.KEY = K.key * Math.pow(Ld, K.adapt - 1); s.EMAX = s.KEY / Math.pow(Ld, K.adapt) * (s === B ? K.maxAdaptB : K.maxAdapt);
+    s.raws = null; s.ok = true;
+  }
+  var READY = false;
+  loadSet(A, function () { READY = true; T0 = performance.now() - (META.start || 18) * 1000; requestAnimationFrame(function () { still.style.opacity = 0; });
+    /* 崩れたあとの画は、最初の画が出てから後ろで読む */
+    setTimeout(function () { try { setTex(B); loadSet(B, function () { plan(); if (COL.pending) startCollapse(); setTimeout(function () { rdInit(); }, 800); }); } catch (e) { console.warn(e); } }, 600); });
+
+  /* ── カーテン ── */
+  var CURT = {target: 0, v: 0, expo: null, last: performance.now()}, CZ = S.D - .46, CTOP = S.scr.y1 + 1.1, NFOLD = 8, FAMP = .11;
+  function curtainX(v) { var Q = S.scr, mid = (Q.x0 + Q.x1) / 2, lo = Q.x0 - .15, ro = Q.x1 + .15; return [Q.x0 - 1.5, lo + (mid - lo) * v, ro + (mid - ro) * v, Q.x1 + 1.5]; }
+  function curNorm(per) { var s = 0; for (var k = 0; k < 64; k++) { var ph = k / 64 * TAU, sl = FAMP / per * TAU * Math.cos(ph), nv = 1 / Math.sqrt(1 + sl * sl), ao = .6 + .4 * (.5 + .5 * Math.sin(ph)); s += nv * (1 + .35 * sl * nv) * ao + .5 * (1 - nv) * (1 - nv); } return s / 64; }
+  function evt(e) { var b = frame.getBoundingClientRect(); return {x: (e.clientX - b.left) / b.width * V.w, y: (e.clientY - b.top) / b.height * V.h}; }
+  function onScreen(e) { var m = evt(e), Q = S.scr, a = proj(Q.x0 - 1.4, Q.y1 + 1, S.D), c = proj(Q.x1 + 1.4, 0, S.D); return m.x > a.x && m.x < c.x && m.y > a.y && m.y < c.y; }
+  function onExit(e) { var m = evt(e), E = S.exitDoor, a = proj(.09, E.h + .62, E.z1 + .15), c = proj(.09, 0, E.z0 - .15); return m.x > Math.min(a.x, c.x) - 1 && m.x < Math.max(a.x, c.x) + 1 && m.y > a.y && m.y < c.y; }
+  frame.addEventListener('click', function (e) { if (!READY || ZM.state) return; if (onExit(e)) { startCollapse(); return; } var mg = onMag(e); if (mg >= 0) { zoomTo(1, mg % MAG.sheets.length); return; } if (!COL.phase && onScreen(e)) CURT.target = CURT.target ? 0 : 1; });
+  frame.addEventListener('mousemove', function (e) { frame.style.cursor = ZM.state ? '' : COL.phase !== 1 && onMag(e) >= 0 ? 'zoom-in' : COL.phase !== 1 && ( (!COL.phase && (onExit(e) || onScreen(e)))) ? 'pointer' : ''; });
+
+  /* ── 雑誌：左の螺旋の紙を押すと、その紙（「螺旋の雑誌」の紙）を開く。螺旋の底が創刊 ── */
+  var MAG = META.mag || {lap: null, sheets: []}, MAGP = META.magp || [], mag = document.getElementById('mag'), magFrame = document.getElementById('magFrame'), MCUR = 0, MOPEN = false, MPAUSE = 0, magCache = {};
+  function onMag(e) { if (COL.phase === 1 || !MAGP.length || !MAG.sheets.length) return -1; var m = evt(e), best = -1, bd = 1e9;
+    MAGP.forEach(function (q, i) { var p = proj(q[0], q[1], q[2]), d = Math.hypot(p.x - m.x, p.y - m.y); if (d < bd) { bd = d; best = i; } });
+    if (best < 0) return -1; var pc = proj(MAGP[best][0], MAGP[best][1], MAGP[best][2]), dep = depthAt(m.x, m.y);
+    return bd < 7 && (Math.abs(dep - pc.z) < 1.2 || bd < 3.5) ? best : -1; }
+  function magAddr(s) { var L = MAG.lap; return (L ? '巡 ' + (Math.floor(s / L) + 1) + ' ／ 方位 ' + (s % L + 1) : '巡 1 ／ ' + (s + 1) + ' 枚目') + (s === 0 ? '　創刊' : ''); }
+  /* srcdoc の紙は相対パス（図版 img/）が親を基準にしてしまうので、紙の場所を <base> で入れる */
+  function magBase(t, url) { var b = '<base href="' + new URL(url, location.href).href.replace(/"/g, '&quot;') + '">'; return /<head[^>]*>/i.test(t) ? t.replace(/<head[^>]*>/i, function (m) { return m + b; }) : b + t; }
+  function showSheet(s) { var n = MAG.sheets.length; MCUR = Math.max(0, Math.min(n - 1, s)); var S = MAG.sheets[MCUR], url = 'mag/' + S.id + '.html';
+    document.getElementById('magAd').textContent = magAddr(MCUR); document.getElementById('magTi').textContent = S.t; document.getElementById('magN').textContent = (MCUR + 1) + ' ／ ' + n;
+    document.getElementById('magPrev').disabled = MCUR <= 0; document.getElementById('magNext').disabled = MCUR >= n - 1; document.getElementById('magHome').disabled = MCUR === 0; magFrame.title = S.t;
+    drawSide(MCUR);
+    if (magCache[url]) { magFrame.srcdoc = magCache[url]; return; }
+    fetch(url).then(function (r) { if (!r.ok) throw new Error(r.status); return r.text(); }).then(function (t) { t = magBase(t, url); magCache[url] = t; if (MAG.sheets[MCUR].id === S.id) magFrame.srcdoc = t; }).catch(function () { magFrame.removeAttribute('srcdoc'); magFrame.src = url; }); }
+  /* ── 紙の下：番地・方位（平面図）・立面図。「螺旋の雑誌」と同じ描き方 ── */
+  var NSV = 'http://www.w3.org/2000/svg', MNC = MAG.lap || 12;
+  function svgE(tag, at, parent) { var e = document.createElementNS(NSV, tag); for (var k in at) e.setAttribute(k, at[k]); if (parent) parent.appendChild(e); return e; }
+  function mSlots() { return (Math.floor(MAG.sheets.length / MNC) + 1) * MNC; }
+  function mDir(s) { return s % MNC + 1; }
+  function mLap(s) { return Math.floor(s / MNC) + 1; }
+  function drawSide(cur) { var w = MAG.sheets.length, n = mSlots(), $ = function (id) { return document.getElementById(id); };
+    $('mAddr').textContent = '巡 ' + mLap(cur) + ' ／ 方位 ' + mDir(cur) + (cur === 0 ? '　創刊' : ''); $('mAng').textContent = Math.round((mDir(cur) - 1) * 360 / MNC) + '°';
+    $('mPrev').disabled = cur <= 0; $('mNext').disabled = cur >= w - 1; $('mDown').disabled = cur - MNC < 0; $('mUp').disabled = cur + MNC > w - 1;
+    /* 平面図：上から見ると円。方位ごとの目盛りと、巡ごとの点（内側ほど後の巡） */
+    var p = $('mPlan'), cx = 130, cy = 112, R = 70; p.innerHTML = '';
+    svgE('circle', {cx: cx, cy: cy, r: R, fill: 'none', stroke: 'var(--line)', 'stroke-width': 1}, p);
+    var a0 = (mDir(cur) - 1) / MNC * TAU - Math.PI / 2; svgE('line', {x1: cx, y1: cy, x2: cx + Math.cos(a0) * (R + 22), y2: cy + Math.sin(a0) * (R + 22), stroke: 'var(--gold)', 'stroke-width': 1}, p);
+    for (var dI = 1; dI <= MNC; dI++) { var a = (dI - 1) / MNC * TAU - Math.PI / 2, ca = Math.cos(a), sa = Math.sin(a);
+      svgE('line', {x1: cx + ca * (R - 5), y1: cy + sa * (R - 5), x2: cx + ca * (R + 5), y2: cy + sa * (R + 5), stroke: 'var(--muted)', 'stroke-width': 1}, p);
+      for (var L = 0; L * MNC + dI - 1 < n; L++) { var s = L * MNC + dI - 1, rr = R - 12 - L * 9, fut = s >= w;
+        svgE('circle', {cx: cx + ca * rr, cy: cy + sa * rr, r: s === cur ? 4 : 2.6, fill: fut ? 'none' : s === cur ? 'var(--gold)' : 'var(--paper)', stroke: fut ? 'var(--gold-dim)' : 'none', opacity: s === cur || fut ? 1 : .55 + .45 * (L + 1 === mLap(cur))}, p); } }
+    var t1 = svgE('text', {x: cx, y: cy - R - 10, fill: 'var(--muted)', 'font-size': 10, 'font-family': 'IBM Plex Mono, monospace', 'text-anchor': 'middle'}, p); t1.textContent = '方位 1';
+    $('mPlanCap').innerHTML = '<b>方位（平面図）</b>　上から見ると円。始まりと終わりの境目はない。方位は ' + MNC + '（一巡目の枚数）。内側の点ほど後の巡。金の線がいまの紙の方位。';
+    /* 立面図：横から見ると螺旋。いまの紙の方位を正面に。手前は実線、奥は破線 */
+    var q = $('mElev'), base = 272, ex = 130, laps = n / MNC, Pt = Math.min(64, 220 / laps), ER = 72, th0 = (mDir(cur) - 1) / MNC * TAU, top = Math.max(0, base - 10 - laps * Pt - 34); q.innerHTML = ''; q.setAttribute('viewBox', '0 ' + top + ' 260 ' + (300 - top));
+    svgE('line', {x1: 20, y1: base, x2: 240, y2: base, stroke: 'var(--muted)', 'stroke-width': 1}, q); var fl = svgE('text', {x: 22, y: base + 14, fill: 'var(--muted)', 'font-size': 9, 'font-family': 'IBM Plex Mono, monospace'}, q); fl.textContent = '創刊';
+    svgE('line', {x1: ex - ER, y1: base, x2: ex - ER, y2: base - laps * Pt - 6, stroke: 'var(--line)'}, q); svgE('line', {x1: ex + ER, y1: base, x2: ex + ER, y2: base - laps * Pt - 6, stroke: 'var(--line)'}, q);
+    var pt = function (s) { var th = (s % MNC) / MNC * TAU - th0; return {x: ex + ER * Math.sin(th), y: base - 10 - (s / MNC) * Pt, front: Math.cos(th) >= -1e-6}; }, runs = [], run = null;
+    for (var t = 0; t <= n - 1 + 1e-9; t += .1) { var o = pt(t), key = (o.front ? 'f' : 'b') + (t > w - 1 ? 'x' : '');
+      if (!run || run.key !== key) { if (run) run.d += ' L' + o.x.toFixed(1) + ' ' + o.y.toFixed(1); run = {key: key, d: 'M' + o.x.toFixed(1) + ' ' + o.y.toFixed(1)}; runs.push(run); } else run.d += ' L' + o.x.toFixed(1) + ' ' + o.y.toFixed(1); }
+    runs.forEach(function (r) { var back = r.key.charAt(0) === 'b', fut = r.key.length > 1; svgE('path', {d: r.d, fill: 'none', stroke: fut ? 'var(--gold-dim)' : back ? 'var(--muted)' : 'var(--fg)', 'stroke-width': back ? .8 : 1.1, 'stroke-dasharray': back || fut ? '3 3' : 'none', opacity: back ? .6 : 1}, q); });
+    for (var s2 = 0; s2 < n; s2++) { var o2 = pt(s2), fut2 = s2 >= w; if (!o2.front && s2 !== cur) continue; svgE('circle', {cx: o2.x, cy: o2.y, r: s2 === cur ? 4.5 : 2.4, fill: fut2 ? 'var(--bg)' : s2 === cur ? 'var(--gold)' : 'var(--paper)', stroke: fut2 ? 'var(--gold-dim)' : 'none'}, q); }
+    for (var L2 = 1; L2 <= laps; L2++) { var lt = svgE('text', {x: 22, y: base - 10 - (L2 - .5) * Pt + 3, fill: 'var(--muted)', 'font-size': 9, 'font-family': 'IBM Plex Mono, monospace'}, q); lt.textContent = '巡' + L2; }
+    var tp = pt(w), tl = svgE('text', {x: tp.x, y: tp.y - 9, fill: 'var(--gold)', 'font-size': 9, 'font-family': 'IBM Plex Mono, monospace', 'text-anchor': 'middle'}, q); tl.textContent = '成長点';
+    $('mElevCap').innerHTML = '<b>立面図</b>　横から見ると螺旋。一巡ごとに一段上がる。いまの紙の方位を正面に向けて描いた。手前は実線、奥は破線。'; }
+  document.getElementById('mPrev').addEventListener('click', function () { showSheet(MCUR - 1); });
+  document.getElementById('mNext').addEventListener('click', function () { showSheet(MCUR + 1); });
+  document.getElementById('mDown').addEventListener('click', function () { showSheet(MCUR - MNC); });
+  document.getElementById('mUp').addEventListener('click', function () { showSheet(MCUR + MNC); });
+  function openMag(s) { if (MOPEN) return; MOPEN = true; MPAUSE = performance.now(); showSheet(s); mag.hidden = false; mag.scrollTop = 0; document.body.classList.add('reading'); requestAnimationFrame(function () { requestAnimationFrame(function () { mag.classList.add('on'); }); }); document.getElementById('magX').focus(); }
+  function closeMag() { if (!MOPEN) return; MOPEN = false; if (ZM.state === 2) { rdGo(MCUR); rdStatus(); } T0 += performance.now() - MPAUSE; mag.classList.remove('on'); document.body.classList.remove('reading'); setTimeout(function () { if (!MOPEN) mag.hidden = true; }, reduce ? 0 : 450); }   /* 読んでいるあいだ、映画館の時刻は止まる */
+  document.getElementById('magX').addEventListener('click', closeMag);
+  document.getElementById('magPrev').addEventListener('click', function () { showSheet(MCUR - 1); });
+  document.getElementById('magNext').addEventListener('click', function () { showSheet(MCUR + 1); });
+  document.getElementById('magHome').addEventListener('click', function () { showSheet(0); });
+
+  document.addEventListener('keydown', function (e) { if (!MOPEN) { if (ZM.state !== 2) return; var k = e.key, n = MAG.sheets.length;
+      if (k === 'Escape') zoomTo(0);
+      else if (k === 'ArrowRight' || k === 'ArrowLeft') { rdGo(RD.cur + (k === 'ArrowRight' ? 1 : -1)); e.preventDefault(); }
+      else if (k === 'ArrowUp' || k === 'ArrowDown') { var t = RD.cur + (k === 'ArrowUp' ? RNC : -RNC); if (t >= 0 && t < n) rdGo(t); e.preventDefault(); }
+      else if (k === 'Home') { rdGo(0); e.preventDefault(); }
+      else if (k === 'Enter') { e.preventDefault(); openMag(RD.cur); }
+      return; } if (e.key === 'Escape') closeMag(); else if (e.key === 'ArrowLeft') showSheet(MCUR - 1); else if (e.key === 'ArrowRight') showSheet(MCUR + 1); });
+
+  /* ── 寄る：左の螺旋を押すと、最後列の画を螺旋へ拡げながら、読むための螺旋階段に移る ──
+     寄った後は用途が違う（読む）ので、光は計算しない。「螺旋の雑誌」の 3D と同じ段に表紙をそのまま貼る。柱はなく、背景は映画館の螺旋の後ろと同じ海（静止画） */
+  var ZM = {state: 0, t0: 0, fix: null}, SPC = [5.8, 2.9, 2.0], rdc = document.getElementById('rd'), rdBack = document.getElementById('rdBack');
+  var RD = {ok: false, loading: false, wait: [], cur: 0, c: 0, yaw: 0, pitch: 0, anim: 0, drag: null}, RK = {rc: .47, d: .62, w: .44, th: .028, rise: .24, tilt: 24 * Math.PI / 180, col: .12}, RNC = MAG.lap || 12;
+  var RCOL = {bg: '#13110e', gold: '#c9a45c', goldDim: '#7a6743', paper: '#ebe4d4', ink: '#211c16', muted: '#6d6354', white: '#e6e1d6', edge: '#cdc4b2', haze: '#6e8cb4'};
+  function rdSlots() { return (Math.floor(MAG.sheets.length / RNC) + 1) * RNC; }
+  function rdAng(x) { return -x * TAU / RNC; }
+  function loadThree(cb) { if (window.THREE) return cb(window.THREE); var sc = document.createElement('script'); sc.src = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js'; sc.onload = function () { cb(window.THREE || null); }; sc.onerror = function () { cb(null); }; document.head.appendChild(sc); }
+  function rdInit(cb) { if (RD.ok) { if (cb) cb(true); return; } if (cb) RD.wait.push(cb); if (RD.loading) return; RD.loading = true;
+    loadThree(function (T) { var ok = false; if (T) { try { rdBuild(T); ok = true; } catch (e) { console.warn(e); } } RD.ok = ok; RD.loading = false; var w = RD.wait; RD.wait = []; w.forEach(function (f) { f(ok); }); }); }
+  /* 面の明るさは、作るときに一度だけ向きで決める（動かしても計算しない） */
+  function rdShade(T, geo, hex) { var c = new T.Color(hex).convertSRGBToLinear(), n = geo.attributes.normal, col = new Float32Array(n.count * 3), L = new T.Vector3(.35, .8, .5).normalize();
+    for (var i = 0; i < n.count; i++) { var k = .72 + .28 * Math.max(0, n.getX(i) * L.x + n.getY(i) * L.y + n.getZ(i) * L.z); col[i * 3] = c.r * k; col[i * 3 + 1] = c.g * k; col[i * 3 + 2] = c.b * k; }
+    geo.setAttribute('color', new T.BufferAttribute(col, 3)); return geo; }
+  function rdCover(T, s, mat) { RD.loader.load('mag/thumbs/' + MAG.sheets[s].id + '.png', function (t) { t.encoding = T.sRGBEncoding; t.anisotropy = RD.ren.capabilities.getMaxAnisotropy(); mat.map = t; mat.color.set(0xffffff); mat.needsUpdate = true; rdRender(); }, undefined, function () {}); }
+  /* 段の名札（創刊・成長点）：海や砂の上でも読めるよう、漆の地に金の字 */
+  function rdLabel(T, text) { var cv = document.createElement('canvas'); cv.width = 320; cv.height = 96; var g = cv.getContext('2d'), w = 64 + text.length * 44;
+    g.fillStyle = 'rgba(19,17,14,.82)'; g.fillRect((320 - w) / 2, 14, w, 68); g.strokeStyle = 'rgba(201,164,92,.55)'; g.lineWidth = 2; g.strokeRect((320 - w) / 2 + 1, 15, w - 2, 66);
+    g.font = '600 40px "Shippori Mincho B1", "Hiragino Mincho ProN", serif'; g.fillStyle = '#e2c27c'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(text, 160, 50);
+    var t = new T.CanvasTexture(cv); t.encoding = T.sRGBEncoding; var sp = new T.Sprite(new T.SpriteMaterial({map: t, transparent: true, depthWrite: false, depthTest: false, fog: false})); sp.scale.set(.62, .186, 1); sp.renderOrder = 10; return sp; }
+  function rdBuild(T) {
+    RD.T = T; var ren = new T.WebGLRenderer({canvas: rdc, antialias: true, alpha: true}); ren.setClearColor(0x000000, 0); ren.setPixelRatio(Math.min(2, window.devicePixelRatio || 1)); ren.outputEncoding = T.sRGBEncoding;
+    RD.ren = ren; RD.cam = new T.PerspectiveCamera(38, 1, .05, 60); RD.ray = new T.Raycaster(); RD.loader = new T.TextureLoader();
+    var lin = function (h) { return new T.Color(h).convertSRGBToLinear(); }, sc = new T.Scene(); sc.fog = new T.Fog(new T.Color(RCOL.haze), 7, 18);   /* 背景は海の静止画（CSS）。遠い段は海の霞の色へ */
+    var n = rdSlots(), w = MAG.sheets.length, topY = (n - 1) * RK.rise;
+    var mV = new T.MeshBasicMaterial({vertexColors: true});
+    var basis = new T.Matrix4().makeBasis(new T.Vector3(0, 0, -1), new T.Vector3(-1, 0, 0), new T.Vector3(0, 1, 0)), pageGeo = new T.PlaneGeometry(RK.w * .94, RK.d * .94); pageGeo.applyMatrix4(basis);
+    var boxGeo = rdShade(T, new T.BoxGeometry(RK.d, RK.th, RK.w), RCOL.edge), collarGeo = rdShade(T, new T.CylinderGeometry(RK.col + .025, RK.col + .025, .07, 32), RCOL.white), armLen = RK.rc - RK.col, armGeo = rdShade(T, new T.BoxGeometry(armLen, .03, .05), RCOL.white);
+    RD.pick = []; RD.piv = [];
+    for (var s = 0; s < n; s++) { var a = rdAng(s), g = new T.Group(); g.position.set(0, s * RK.rise, 0); g.rotation.y = -a; sc.add(g);
+      var piv = new T.Group(); piv.position.x = RK.rc; piv.rotation.z = -RK.tilt; g.add(piv); RD.piv.push(piv);
+      if (s < w) { var box = new T.Mesh(boxGeo, mV); box.userData.s = s; piv.add(box);
+        var pm = new T.MeshBasicMaterial({color: lin(RCOL.paper)}); rdCover(T, s, pm); var pg = new T.Mesh(pageGeo, pm); pg.position.y = RK.th / 2 + .0015; pg.userData.s = s; piv.add(pg); RD.pick.push(pg, box);
+      }   /* 柱・輪・腕はなし（映画館の螺旋と同じく、宙に浮く） */
+      else { var ln = new T.LineSegments(new T.EdgesGeometry(new T.BoxGeometry(RK.d, RK.th, RK.w)), new T.LineDashedMaterial({color: new T.Color(RCOL.goldDim), dashSize: .035, gapSize: .03})); ln.computeLineDistances(); piv.add(ln); } }
+    RD.hl = new T.LineSegments(new T.EdgesGeometry(new T.BoxGeometry(RK.d + .03, RK.th + .03, RK.w + .03)), new T.LineBasicMaterial({color: new T.Color(RCOL.gold)}));
+    var outerX = RK.rc + (RK.d / 2) * Math.cos(RK.tilt) - .03, a0 = rdAng(0), la = rdLabel(T, '創刊'); la.position.set((outerX + .25) * Math.cos(a0), -.05, (outerX + .25) * Math.sin(a0)); sc.add(la);
+    if (w < n) { var lb = rdLabel(T, '成長点'), aw = rdAng(w); lb.position.set(RK.rc * Math.cos(aw), w * RK.rise + .32, RK.rc * Math.sin(aw)); sc.add(lb); }
+    RD.scene = sc; rdResize();
+  }
+  function rdResize() { if (!RD.ren) return; var w = window.innerWidth, h = window.innerHeight; RD.ren.setSize(w, h, false); RD.cam.aspect = w / h; RD.cam.updateProjectionMatrix(); rdRender(); }
+  window.addEventListener('resize', rdResize);
+  function rdRender() { if (!RD.ok && !RD.scene) return; var cam = RD.cam, R = cam.aspect < .9 ? 4.4 : 3.5, pa = rdAng(RD.c), a = pa + RD.yaw, y = RD.c * RK.rise, tr = RK.rc * .7;
+    cam.position.set(R * Math.cos(a), y + 1.05 + RD.pitch, R * Math.sin(a)); cam.lookAt(tr * Math.cos(pa), y + .12, tr * Math.sin(pa));
+    var hp = RD.piv[RD.cur]; if (hp && RD.hl.parent !== hp) { if (RD.hl.parent) RD.hl.parent.remove(RD.hl); hp.add(RD.hl); }
+    RD.ren.render(RD.scene, cam); }
+  /* ← → で一枚、↑ ↓ で一巡。いまの紙が正面に来るように、まわりを回る（「螺旋の雑誌」と同じ動き） */
+  function rdGo(s) { var n = MAG.sheets.length; s = Math.max(0, Math.min(n - 1, s)); RD.cur = s; rdStatus(); cancelAnimationFrame(RD.anim);
+    var from = RD.c, y0 = RD.yaw, p0 = RD.pitch; if (reduce || !RD.ok) { RD.c = s; RD.yaw = RD.pitch = 0; rdRender(); return; }
+    var t0 = performance.now(), dur = Math.min(1400, 380 + Math.abs(s - from) * 70), step = function (tm) { var k = Math.min(1, (tm - t0) / dur), e = k < .5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2;
+      RD.c = from + (s - from) * e; RD.yaw = y0 * (1 - e); RD.pitch = p0 * (1 - e); rdRender(); if (k < 1) RD.anim = requestAnimationFrame(step); }; RD.anim = requestAnimationFrame(step); }
+  function rdStatus() { if (ZM.state !== 2 || !clockEl) return; var S = MAG.sheets[RD.cur]; clockEl.textContent = magAddr(RD.cur) + '　' + (S ? S.t : '') + '\n← → 紙　↑ ↓ 巡　Enter 読む　Esc 戻る'; }
+  rdc.addEventListener('pointerdown', function (e) { if (ZM.state !== 2) return; RD.drag = {x: e.clientX, y: e.clientY, yaw: RD.yaw, pitch: RD.pitch, moved: false}; try { rdc.setPointerCapture(e.pointerId); } catch (er) {} });
+  rdc.addEventListener('pointermove', function (e) { var d = RD.drag; if (!d) { if (ZM.state === 2 && RD.ok) rdc.style.cursor = rdHit(e) >= 0 ? 'pointer' : 'grab'; return; } var dx = e.clientX - d.x, dy = e.clientY - d.y;
+    if (!d.moved && Math.hypot(dx, dy) > 5) { d.moved = true; cancelAnimationFrame(RD.anim); RD.c = RD.cur; rdc.style.cursor = 'grabbing'; }
+    if (d.moved) { RD.yaw = Math.max(-2.6, Math.min(2.6, d.yaw - dx * .006)); RD.pitch = Math.max(-.8, Math.min(2.4, d.pitch + dy * .006)); rdRender(); } });
+  rdc.addEventListener('pointerup', function (e) { var d = RD.drag; RD.drag = null; if (!d || d.moved || !RD.ok) return; var s = rdHit(e); if (s >= 0) { RD.cur = s; rdRender(); openMag(s); } });
+  rdc.addEventListener('pointercancel', function () { RD.drag = null; });
+  function rdHit(e) { var T = RD.T, r = rdc.getBoundingClientRect(), v = new T.Vector2((e.clientX - r.left) / r.width * 2 - 1, -(e.clientY - r.top) / r.height * 2 + 1); RD.ray.setFromCamera(v, RD.cam); var h = RD.ray.intersectObjects(RD.pick, false)[0]; return h ? h.object.userData.s : -1; }
+  rdBack.addEventListener('click', function () { zoomTo(0); });
+  function zoomTo(on, s) { if (on && (ZM.state || COL.phase === 1)) return; if (!on && ZM.state !== 2) return;
+    if (on) { RD.cur = RD.c = s || 0; RD.yaw = RD.pitch = 0; rdInit(function (ok) { if (ok) { rdResize(); rdRender(); } else { ZM.state = 0; rdc.style.opacity = 0; openMag(RD.cur); } }); }
+    ZM.state = on ? 1 : 3; ZM.t0 = performance.now(); document.body.classList.remove('rdmode'); if (!X.zM) X.zM = hdrFb(W, H); rdc.classList.remove('on'); rdBack.hidden = true; }
+  function zoomE() { var d = ZM.state === 1 ? 1.1 : .8, a = ZM.fix != null ? ZM.fix : reduce ? 1 : Math.min(1, (performance.now() - ZM.t0) / 1000 / d), e = a * a * (3 - 2 * a), v = ZM.state === 1 ? e : 1 - e;
+    rdc.style.opacity = RD.ok ? ss(.4, .95, v).toFixed(3) : 0;
+    if (a >= 1 && ZM.fix == null) { if (ZM.state === 1 && RD.ok) { ZM.state = 2; rdc.classList.add('on'); rdBack.hidden = false; document.body.classList.add('rdmode'); rdStatus(); } else if (ZM.state === 3) { ZM.state = 0; rdc.style.opacity = 0; } }
+    return v; }
+
+  /* ── 崩れる ── */
+  var CEND = 20, COL = {phase: 0, t0: 0, pending: false, fix: null, P: [], balls: [], puffs: [], specks: [], shards: [], chips: [], snapNeeded: false, ev: 0}, G = 5.2, SLOW = 1.3;
+  var BALLS = META.balls || [];
+  function rng(s) { return function () { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }; }
+  function clipPoly(poly, nx, ny, c) { var out = []; for (var i = 0; i < poly.length; i++) { var a = poly[i], b = poly[(i + 1) % poly.length], da = nx * a[0] + ny * a[1] - c, db = nx * b[0] + ny * b[1] - c;
+    if (da <= 0) out.push(a); if ((da <= 0) !== (db <= 0)) { var t = da / (da - db); out.push([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]); } } return out; }
+  function voronoi(w, h, cell, r) { var nx = Math.max(1, Math.round(w / cell)), ny = Math.max(1, Math.round(h / cell)), cw = w / nx, ch = h / ny, sites = [];
+    for (var j = 0; j < ny; j++) for (var i = 0; i < nx; i++) sites.push([(i + .12 + .76 * r()) * cw, (j + .12 + .76 * r()) * ch]);
+    return sites.map(function (s) { var poly = [[0, 0], [w, 0], [w, h], [0, h]];
+      sites.forEach(function (q) { if (q === s) return; var dx = q[0] - s[0], dy = q[1] - s[1]; if (Math.abs(dx) > 3 * cw || Math.abs(dy) > 3 * ch) return; poly = clipPoly(poly, dx, dy, (dx * (q[0] + s[0]) + dy * (q[1] + s[1])) / 2); });
+      return poly; }).filter(function (p) { return p.length >= 3; }); }
+  function rot(p, c, ax, ang) { var x = p[0] - c[0], y = p[1] - c[1], z = p[2] - c[2], co = Math.cos(ang), si = Math.sin(ang), d = (ax[0] * x + ax[1] * y + ax[2] * z) * (1 - co);
+    return [c[0] + x * co + (ax[1] * z - ax[2] * y) * si + ax[0] * d, c[1] + y * co + (ax[2] * x - ax[0] * z) * si + ax[1] * d, c[2] + z * co + (ax[0] * y - ax[1] * x) * si + ax[2] * d]; }
+  function ground(x, z) { if (x > 0 && x < S.W && z < 0 && z > S.zr) { var r = Math.floor(-z / 1.5); return (r + 1) * S.rise + (r < S.rows - 1 ? .8 : 0); } return 0; }
+  function norm3(a) { var l = Math.hypot(a[0], a[1], a[2]) || 1; return [a[0] / l, a[1] / l, a[2] / l]; }
+  /* 破片の位置：落ちはじめる前は元の所（直前に少し沈む）、落ちて、地面に当たると崩れて消える */
+  function pieceAt(P, ct) { var tau = ct - P.ts, disp = [0, 0, 0], ang = 0, al = 1, shd = 1;
+    if (tau < 0) { disp[1] = -.035 * ss(-.4, 0, tau); }
+    else if (P.kind === 'floor') { disp[1] = -.08 * tau - .06 * tau * tau; ang = P.om * tau; al = 1 - ss(.1, 1.7, tau); shd = 1 - .3 * ss(0, 1.5, tau); }
+    else { var te = tau < P.ti ? tau : P.ti + (tau - P.ti) * .25; disp = [P.v[0] * te, P.v[1] * te - .5 * G * te * te, P.v[2] * te]; ang = P.om * te; al = tau < P.ti ? 1 : 1 - ss(0, .45, tau - P.ti); shd = 1 - .22 * ss(0, 1.5, tau); }
+    var c1 = [P.c0[0] + disp[0], P.c0[1] + disp[1], P.c0[2] + disp[2]];
+    return {mv: tau > 0, lit: ss(0, 1.5, tau), n: ang && P.n0 ? rot(P.n0, [0, 0, 0], P.ax, ang) : P.n0, v: P.v0.map(function (q) { var r = ang ? rot(q, P.c0, P.ax, ang) : q; return [r[0] + disp[0], r[1] + disp[1], r[2] + disp[2]]; }), c: c1, al: al, shd: shd}; }
+  function ballAt(b, ct) { var tau = ct - b.tb, sw = .12 * ss(0, 1, ct) * Math.sin(ct * 2.6 + b.ph), x = b.x + sw * b.dx, z = b.z + sw * b.dz;
+    if (tau < 0) return {x: x, y: b.y, z: z, on: true, hang: true}; var y = b.y - .5 * 9.8 * tau * tau; if (tau >= b.tf) return {on: false}; return {x: x, y: y, z: z, on: true, hang: false}; }
+  var SEATTOP = [];
+  function plan() {
+    for (var sx = 0; sx <= V.w; sx += 2) { var i = Math.min(W - 1, Math.floor(sx * PXK)), y = H - 1; for (var j = Math.floor(H * .45); j < H; j++) if (B.DEPTH[j * W + i] < 9) { y = j; break; } SEATTOP.push(y / PXK); }
+    var r = rng(4242), Q = S.scr, P = [], Wd = S.W, D = S.D, Hh = S.H;
+    var surf = [
+      {kind: 'ceil', o: [0, Hh, -2.5], eu: [1, 0, 0], ev: [0, 0, 1], w: Wd, h: D + 2.5, cell: 2.3, n: [0, -1, 0]},
+      {kind: 'left', o: [0, 0, -2.5], eu: [0, 0, 1], ev: [0, 1, 0], w: D + 2.5, h: Hh, cell: 2.1, n: [1, 0, 0]},
+      {kind: 'right', o: [Wd, 0, -2.5], eu: [0, 0, 1], ev: [0, 1, 0], w: D + 2.5, h: Hh, cell: 2.1, n: [-1, 0, 0]},
+      /* 前の壁はスクリーンの穴のまわりの四つに分ける。穴（幕を閉じていたときだけ）は布の破片 */
+      {kind: 'front', o: [0, 0, D], eu: [1, 0, 0], ev: [0, 1, 0], w: Q.x0, h: Hh, cell: 2.0, n: [0, 0, -1]},
+      {kind: 'front', o: [Q.x1, 0, D], eu: [1, 0, 0], ev: [0, 1, 0], w: Wd - Q.x1, h: Hh, cell: 2.0, n: [0, 0, -1]},
+      {kind: 'front', o: [Q.x0, Q.y1, D], eu: [1, 0, 0], ev: [0, 1, 0], w: Q.x1 - Q.x0, h: Hh - Q.y1, cell: 2.0, n: [0, 0, -1]},
+      {kind: 'front', o: [Q.x0, 0, D], eu: [1, 0, 0], ev: [0, 1, 0], w: Q.x1 - Q.x0, h: Q.y0, cell: 2.0, n: [0, 0, -1]},
+      {kind: 'open', o: [Q.x0, Q.y0, CZ], eu: [1, 0, 0], ev: [0, 1, 0], w: Q.x1 - Q.x0, h: Q.y1 - Q.y0, cell: 2.4, n: [0, 0, -1]},
+      /* 舞台（上の面と前の面）と、座席から舞台までの床 */
+      {kind: 'floor', o: [0, .37, D - .92], eu: [1, 0, 0], ev: [0, 0, 1], w: Wd, h: .92, cell: 1.5, n: [0, 1, 0]},
+      {kind: 'floor', o: [0, 0, D - .92], eu: [1, 0, 0], ev: [0, 1, 0], w: Wd, h: .37, cell: 1.5, n: [0, 0, -1]},
+      {kind: 'floor', o: [0, 0, -.05], eu: [1, 0, 0], ev: [0, 0, 1], w: Wd, h: D - .87, cell: 1.7, n: [0, 1, 0]}];
+    surf.forEach(function (sf) { voronoi(sf.w, sf.h, sf.cell, r).forEach(function (poly) {
+      var v0 = poly.map(function (q) { return [sf.o[0] + sf.eu[0] * q[0] + sf.ev[0] * q[1], sf.o[1] + sf.eu[1] * q[0] + sf.ev[1] * q[1], sf.o[2] + sf.eu[2] * q[0] + sf.ev[2] * q[1]]; });
+      /* 画面に入らない破片は作らない */
+      var x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9, ok = true; v0.forEach(function (q) { var p = proj(q[0], q[1], q[2]); if (p.z < .3) ok = false; x0 = Math.min(x0, p.x); x1 = Math.max(x1, p.x); y0 = Math.min(y0, p.y); y1 = Math.max(y1, p.y); });
+      if (!ok || x1 < 0 || x0 > V.w || y1 < 0 || y0 > V.h) return;
+      var c0 = [0, 0, 0], area = 0; v0.forEach(function (q) { c0[0] += q[0] / v0.length; c0[1] += q[1] / v0.length; c0[2] += q[2] / v0.length; });
+      for (var i = 1; i < poly.length - 1; i++) area += Math.abs((poly[i][0] - poly[0][0]) * (poly[i + 1][1] - poly[0][1]) - (poly[i + 1][0] - poly[0][0]) * (poly[i][1] - poly[0][1])) / 2;
+      var p = {kind: sf.kind, v0: v0, c0: c0, area: area, ti: 9, n0: sf.n, th: sf.kind === 'floor' ? .08 : sf.kind === 'open' ? 0 : sf.kind === 'ceil' ? .32 : .26};
+      var hx = r() - .5, hz = r() - .5, om = .4 + 1.1 * r();
+      if (sf.kind === 'ceil') { p.ts = (.95 + 1.5 * r() + Math.hypot(c0[0] - 11, c0[2] - 3) / 14) * SLOW; p.v = [(r() - .5) * .6, -r() * .6, (r() - .5) * .6]; p.ax = norm3([hx, 0, hz]); p.om = om; }
+      else if (sf.kind === 'left' || sf.kind === 'right') { var sg = sf.kind === 'left' ? -1 : 1, out = r() < .7 ? 1 : -.4; p.ts = (1.5 + 1.4 * r() + (Hh - c0[1]) / Hh * 1.1) * SLOW; p.v = [sg * out * (.4 + .9 * r()), (r() - .3) * .4, (r() - .5) * .5]; p.ax = norm3([(r() - .5) * .4, (r() - .5) * .4, -sg * out]); p.om = om * .8; }
+      else if (sf.kind === 'front' || sf.kind === 'open') { p.ts = (1.3 + 1.5 * r() + (Hh - c0[1]) / Hh * 1.2 + Math.abs(c0[0] - 11) / 30) * SLOW; p.v = [(r() - .5) * .7, (r() - .4) * .4, .3 + 1.4 * r()]; p.ax = norm3([1, (r() - .5) * .5, (r() - .5) * .5]); p.om = om; }
+      else { p.ts = (2.6 + (D - c0[2]) / D * 2.4 + .5 * r()) * SLOW; p.ax = norm3([hx, 0, hz]); p.om = (.08 + .12 * r()) * (r() < .5 ? -1 : 1); p.v = [0, 0, 0]; }
+      if (sf.kind !== 'floor') for (var tt = 0; tt < 9; tt += 1 / 30) { var st = pieceAt(p, p.ts + tt), hit = false; st.v.forEach(function (q) { if (q[1] < ground(q[0], q[2]) - .02) hit = true; }); if (hit) { p.ti = tt; break; } }
+      P.push(p);
+      /* 当たった所から土ぼこり、細かな破片 */
+      var ia = p.kind === 'floor' ? p.ts + .25 : p.ts + p.ti; if (ia < 13) { var sa = pieceAt(p, ia).c, ny = Math.min(4, 1 + Math.floor(p.area / 2.2));
+        for (var k = 0; k < ny; k++) COL.puffs.push({t0: ia + .25 * r(), x: sa[0] + (r() - .5) * Math.sqrt(p.area) * .8, y: Math.max(ground(sa[0], sa[2]), p.kind === 'floor' ? 0 : sa[1] * .3) + .15, z: sa[2] + (r() - .5) * Math.sqrt(p.area) * .6, r0: .35 + .5 * r(), gr: .7 + .8 * r(), vy: .1 + .25 * r(), vx: .15 + .25 * r(), life: 5 + 4 * r(), a0: p.kind === 'floor' ? .09 : .14});
+        if (p.kind !== 'floor') for (var k2 = 0; k2 < 3; k2++) { var an = r() * TAU, sp2 = .6 + 1.8 * r(); COL.chips.push({t0: ia, x: sa[0], y: ground(sa[0], sa[2]) + .05, z: sa[2], vx: Math.cos(an) * sp2, vz: Math.sin(an) * sp2, vy: 1 + 2.2 * r(), s: .03 + .06 * r(), life: 1.4 + r()}); } }
+    }); });
+    COL.P = P;
+    /* 鏡の玉：吊る線が切れて落ち、砂に当たって割れる */
+    var order = BALLS.map(function (b, i) { return i; }).sort(function () { return r() - .5; });
+    COL.balls = BALLS.map(function (b, i) { var tb = (.85 + order.indexOf(i) * .3 + .25 * r()) * SLOW, an = r() * TAU; return {x: b.x, y: b.y, z: b.z, r: b.r, tb: tb, tf: Math.sqrt(2 * Math.max(.05, b.y - b.r - ground(b.x, b.z)) / 9.8), ph: r() * TAU, dx: Math.cos(an), dz: Math.sin(an)}; });
+    COL.balls.forEach(function (b) { var ti = b.tb + b.tf, gy = ground(b.x, b.z);
+      for (var k = 0; k < 46; k++) { var an = r() * TAU, vh = .3 + 2.6 * Math.pow(r(), 1.5), vy = .4 + 2 * r(), tl = 2 * vy / 9.8;
+        COL.shards.push({t0: ti, x: b.x, y: gy + .02, z: b.z, ux: Math.cos(an), uz: Math.sin(an), vh: vh, vy: vy, tl: tl, s: .006 + .02 * r(), n: norm3([(r() - .5) * 1.6, .4 + r(), (r() - .5) * 1.6]), ph: r() * TAU, rot: r() * TAU}); }
+      for (var k3 = 0; k3 < 3; k3++) COL.puffs.push({t0: ti, x: b.x, y: gy + .1, z: b.z, r0: .15, gr: .4, vy: .1, vx: .1, life: 3, a0: .14}); });
+    /* 揺れはじめに、天井から細かな粉が落ちる */
+    COL.puffs.forEach(function (k) { k.life = Math.min(k.life, CEND - .4 - k.t0); });   /* 崩れ終わる前に消えるように */
+    for (var k4 = 0; k4 < 70; k4++) COL.specks.push({t0: .1 + 1.5 * r(), x: 1 + (S.W - 2) * r(), y: S.H - .05, z: 1 + (S.D - 1) * r(), s: .015 + .03 * r()});
+  }
+  function startCollapse() { if (COL.phase) return; if (!B.ok) { COL.pending = true; return; }
+    COL.phase = 1; COL.t0 = performance.now(); COL.ev = CURT.v * CURT.v * (3 - 2 * CURT.v); COL.snapNeeded = true; reveal(); }
+  /* 崩れる物の画素（壁・天井・床・舞台・幕・鏡の玉と吊る線）：崩れる前と後で奥行きか印が変わる所 */
+  function reveal() { var N = W * H, base = new Uint8Array(N), rv = new Uint8Array(N * 4), ev = COL.ev, cx = curtainX(ev);
+    for (var p = 0; p < N; p++) { var da = A.DEPTH[p], db = B.DEPTH[p]; if (Math.abs(da - db) > .1 + .01 * da || A.FLAG[p] !== B.FLAG[p]) base[p] = 1; }
+    /* カーテン：そのとき見えている幕は、前の壁の破片と一緒に落ちる */
+    for (var j = 0; j < H; j++) for (var i = 0; i < W; i++) { var a = ((i + .5) / PXK - V.cx) / C.f, bb = -((j + .5) / PXK - C.hy) / C.f, dx = a, dy = F[1] + U[1] * bb, dz = F[2] + U[2] * bb, tc = (CZ - C.eye[2]) / dz; if (tc <= 0) continue;
+      var x = C.eye[0] + dx * tc, y = C.eye[1] + dy * tc, dzv = tc * (dy * F[1] + dz * F[2]), q = j * W + i; if (A.DEPTH[q] > dzv - .05 && y > 0 && y < CTOP && ((x > cx[0] && x < cx[1]) || (x > cx[2] && x < cx[3]))) base[q] = 1; }
+    for (var p2 = 0; p2 < N; p2++) { rv[p2 * 4] = rv[p2 * 4 + 1] = base[p2] ? 255 : 0; rv[p2 * 4 + 2] = rv[p2 * 4 + 3] = 128; }
+    /* 鏡の玉と吊る線：すぐ外の画素で埋める。外が崩れる物なら破片に（埋めた画で）貼り、外が残る所なら二つの画の比で埋める */
+    var put = function (x, y, tx, ty) { if (x < 0 || y < 0 || x >= W || y >= H) return; tx = Math.max(0, Math.min(W - 1, Math.round(tx))); ty = Math.max(0, Math.min(H - 1, Math.round(ty)));
+      var q = y * W + x, st = base[ty * W + tx]; rv[q * 4] = st ? 255 : 128; rv[q * 4 + 1] = st ? 255 : 0; rv[q * 4 + 2] = Math.max(0, Math.min(255, tx - x + 128)); rv[q * 4 + 3] = Math.max(0, Math.min(255, ty - y + 128)); };
+    BALLS.forEach(function (b) { var pr = proj(b.x, b.y, b.z), ccx = pr.x * PXK, ccy = pr.y * PXK, rr = b.r * pr.s * PXK + 2;
+      for (var y2 = Math.floor(ccy - rr); y2 <= ccy + rr; y2++) for (var x2 = Math.floor(ccx - rr); x2 <= ccx + rr; x2++) { var ex = x2 + .5 - ccx, ey = y2 + .5 - ccy, l = Math.hypot(ex, ey); if (l > rr) continue; l = l || 1; put(x2, y2, ccx + ex / l * (rr + 2.5), ccy + ey / l * (rr + 2.5)); }
+      for (var yy = b.y + b.r; yy < S.H; yy += .01) { var pc = proj(b.x, yy, b.z), cxp = Math.round(pc.x * PXK - .5), cyp = Math.round(pc.y * PXK - .5); for (var o = -1; o <= 1; o++) { var x3 = cxp + o; if (x3 < 0 || x3 >= W || cyp < 0 || cyp >= H || Math.abs(A.DEPTH[cyp * W + x3] - pc.z) > 1.5) continue; put(x3, cyp, cxp + (o < 0 ? -3 : 3), cyp); } } });
+    X.rev = tex2(W, H, gl.RGBA8, false); gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, W, H, gl.RGBA, gl.UNSIGNED_BYTE, rv);
+    X.cA = hdrFb(W, H); X.cB = hdrFb(W, H); X.snap = hdrFb(W, H); X.snapI = hdrFb(W, H);
+  }
+  function collapseT() { return COL.fix != null ? COL.fix : (performance.now() - COL.t0) / 1000; }
+  function finishCollapse() { COL.phase = 2; CURT.target = 0; CURT.v = 0; frame.style.transform = '';
+    [A.G, A.E, A.aux].forEach(function (t) { gl.deleteTexture(t); }); [X.cA, X.cB, X.snap, X.snapI].forEach(function (o) { gl.deleteTexture(o.t); gl.deleteFramebuffer(o.f); }); gl.deleteTexture(X.rev); X.cA = X.cB = X.snap = X.snapI = null; }
+  function shake(ct) { var amp = 1.3 * ss(0, .5, ct) + 4.2 * ss(1.1, 2.1, ct) * (1 - ss(4.5, 11, ct)); return [amp * (Math.sin(ct * 71.3) + .6 * Math.sin(ct * 113.1 + 1.3)) * .55, amp * (Math.sin(ct * 89.7 + .4) + .5 * Math.sin(ct * 131.9)) * .55]; }
+
+  /* ── 描く ── */
+  var LUM = null, lumAt = function (x, y) { if (!LUM) return .3; var i = Math.max(0, Math.min(W - 1, Math.floor(x * PXK))), j = Math.max(0, Math.min(H - 1, Math.floor(y * PXK))); return LUM[j * W + i]; }, lastRB = 0, RB = null;
+  function depthAt(x, y) { var D0 = COL.phase ? B.DEPTH : A.DEPTH; if (!D0) return 1e9; var i = Math.floor(x * PXK), j = Math.floor(y * PXK); if (i < 0 || j < 0 || i >= W || j >= H) return 1e9; return D0[j * W + i]; }
+  function compose(s, ww, st, t, curOn, ev, fc, fb) {
+    var pA = X.pA; gl.viewport(0, 0, W, H); gl.bindVertexArray(X.vao); gl.bindFramebuffer(gl.FRAMEBUFFER, fb); gl.useProgram(pA); gl.disable(gl.BLEND);
+    gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D_ARRAY, s.G); gl.uniform1i(u(pA, 'uG'), 0);
+    gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D_ARRAY, s.E); gl.uniform1i(u(pA, 'uE'), 1);
+    gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, s.aux); gl.uniform1i(u(pA, 'uAux'), 2);
+    gl.uniform3fv(u(pA, 'uW'), ww); gl.uniform1i(u(pA, 'uH'), H);
+    gl.uniform4fv(u(pA, 'uCam'), [V.w / W, V.cx, C.hy, C.f]); gl.uniform3fv(u(pA, 'uF'), F); gl.uniform3fv(u(pA, 'uU'), U); gl.uniform3fv(u(pA, 'uEye'), C.eye);
+    var sunC = [0, 0, 0], sunV = [0, 0, 1]; if (st.sunDir && st.sun > 0) { sunV = st.sunDir; var kk = K.sunDisc * st.sun; sunC = [kk * st.sunTint[0], kk * st.sunTint[1], kk * st.sunTint[2]]; }
+    gl.uniform3fv(u(pA, 'uSunV'), sunV); gl.uniform3fv(u(pA, 'uSunC'), sunC);
+    var sh2 = -4 + 8 * st.starPos, md = starToward(META.moon, sh2), stars = new Float32Array(36);
+    META.stars.forEach(function (a, i) { if (i >= 9) return; var d = starToward(a, sh2), tw = 1 + .5 * Math.sin(t * (2.3 + i * .71) + i * 2.1) * Math.sin(t * (.9 + i * .37) + i); stars[i * 4] = d[0]; stars[i * 4 + 1] = d[1]; stars[i * 4 + 2] = d[2]; stars[i * 4 + 3] = a[2] < 1 ? a[2] * st.starI * K.star * Math.max(.15, tw) : 0; });
+    gl.uniform4fv(u(pA, 'uMoon'), [md[0], md[1], md[2], st.starI * K.moon]); gl.uniform4fv(u(pA, 'uSt'), stars);
+    var cx = curtainX(ev), per = (cx[1] - cx[0]) / NFOLD; gl.uniform1f(u(pA, 'uCurOn'), curOn ? 1 : 0); gl.uniform4fv(u(pA, 'uCurX'), cx); gl.uniform4fv(u(pA, 'uCurY'), [CTOP, CZ, S.scr.x0, S.scr.x1]); gl.uniform3fv(u(pA, 'uCurN'), [NFOLD, FAMP, curNorm(per)]);
+    if (curOn) { var cb = new Float32Array(12); for (var b = 0; b < 4; b++) for (var g5 = 0; g5 < NG * 3; g5++) cb[b * 3 + g5 % 3] += ww[g5] * CURB[b][g5]; gl.uniform1f(u(pA, 'uCurK'), K.curtain); gl.uniform3fv(u(pA, 'uCurB'), cb); }
+    gl.uniform1f(u(pA, 'uTime'), t); gl.uniform1f(u(pA, 'uShore'), S.shore); gl.uniform1f(u(pA, 'uSkyW'), K.sky * st.skyW); gl.uniform3fv(u(pA, 'uSkyT'), st.skyTint); gl.uniform1f(u(pA, 'uFc'), fc);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+  }
+  function targetA(st, ww, ev) { var fc = 1 - ev + ev * .012, Lr = lumW(ww, A.MEAN), Ls = lumW(ww, A.MEANF), Lo = lumW(st.w, A.MEAN), Lso = lumW(st.w, A.MEANF);
+    var open = Math.min(A.KEY / Math.pow(Lo, K.adapt), K.screen / Lso);   /* 開いているときの露出。閉じても目はその数倍までしか慣れない（闇は闇のまま） */
+    return Math.min(A.KEY / Math.pow(Lr, K.adapt), K.screen / Math.max(1e-6, Ls * fc + Lr * (1 - fc)), A.EMAX, open * (1 + (K.closeAdapt - 1) * ev)); }
+  function targetB(ww) { return Math.min(B.KEY / Math.pow(lumW(ww, B.MEAN), K.adapt), K.screen / lumW(ww, B.MEANF), B.EMAX); }
+  var ADAPTING = false;
+  function draw(t, dt) {
+    var st = state(t), cs = reduce ? 1 : dt / 3.2, ph = COL.phase, ct = ph === 1 ? collapseT() : 0;
+    if (ph === 0) CURT.v = CURT.target ? Math.min(1, CURT.v + cs) : Math.max(0, CURT.v - cs);
+    var ev = ph === 0 ? CURT.v * CURT.v * (3 - 2 * CURT.v) : COL.ev, fc = 1 - ev + ev * .012;
+    var lt = ph === 0 ? 0 : ph === 2 ? 1 : reduce ? ss(0, 2.5, ct) : ss(1.2, 8, ct), wA = ph < 2 ? wts(st, A, ev) : null, wB = ph > 0 ? wts(st, B, 0) : null;
+    /* 露出：目は暗さにゆっくり慣れる（明るくなるときは速く戻る）。崩れる途中は二つの場面の間を移る */
+    var target = ph === 0 ? targetA(st, wA, ev) : ph === 2 ? targetB(wB) : Math.exp(Math.log(targetA(st, wA, ev)) * (1 - lt) + Math.log(targetB(wB)) * lt), now = performance.now(), d2 = Math.min(.5, (now - CURT.last) / 1000); CURT.last = now;
+    if (CURT.expo == null || reduce) CURT.expo = target; else { var lt2 = Math.log(target), lc = Math.log(CURT.expo), tau = lt2 > lc ? 9 : 1.2; CURT.expo = Math.exp(lc + (lt2 - lc) * (1 - Math.exp(-d2 / tau))); }
+    ADAPTING = Math.abs(Math.log(target / CURT.expo)) > .06;
+    var zs = ph === 1 ? 0 : ZM.state;
+    if (zs === 1 || zs === 3) { var ze = zoomE(), cpA = projC0(SPC), pZ = X.pZ;
+      compose(ph ? B : A, ph ? wB : wA, st, t, !ph, ph ? 0 : ev, ph ? 1 : fc, X.zM.f);
+      gl.bindFramebuffer(gl.FRAMEBUFFER, X.fb); gl.viewport(0, 0, W, H); gl.useProgram(pZ); gl.bindVertexArray(X.vao); gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, X.zM.t); gl.uniform1i(u(pZ, 'uM'), 0);
+      gl.uniform2fv(u(pZ, 'uS0'), [cpA.x / V.w, 1 - cpA.y / V.h]); gl.uniform2fv(u(pZ, 'uS1'), [.5, .52]); gl.uniform1f(u(pZ, 'uR'), 2.6); gl.uniform1f(u(pZ, 'uE'), ze); gl.uniform2fv(u(pZ, 'uRes'), [W, H]); gl.drawArrays(gl.TRIANGLES, 0, 3); }
+    else if (ph === 0) compose(A, wA, st, t, true, ev, fc, X.fb);
+    else if (ph === 2) compose(B, wB, st, t, false, 0, 1, X.fb);
+    else {
+      if (COL.snapNeeded) { gl.bindFramebuffer(gl.READ_FRAMEBUFFER, X.fb); gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, X.snap.f); gl.blitFramebuffer(0, 0, W, H, 0, 0, W, H, gl.COLOR_BUFFER_BIT, gl.NEAREST); gl.bindFramebuffer(gl.READ_FRAMEBUFFER, null); gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, null); COL.snapNeeded = false;
+        gl.viewport(0, 0, W, H); gl.bindVertexArray(X.vao); gl.bindFramebuffer(gl.FRAMEBUFFER, X.snapI.f); gl.useProgram(X.pI); gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, X.snap.t); gl.uniform1i(u(X.pI, 'uS'), 0); gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, X.rev); gl.uniform1i(u(X.pI, 'uR'), 1); gl.uniform1i(u(X.pI, 'uH'), H); gl.drawArrays(gl.TRIANGLES, 0, 3); }
+      if (lt < 1) compose(A, wA, st, t, true, ev, fc, X.cA.f);
+      compose(B, wB, st, t, false, 0, 1, X.cB.f);
+      var pM = X.pM; gl.bindFramebuffer(gl.FRAMEBUFFER, X.fb); gl.useProgram(pM); gl.bindVertexArray(X.vao);
+      gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, X.cA.t); gl.uniform1i(u(pM, 'uA'), 0); gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, X.cB.t); gl.uniform1i(u(pM, 'uB'), 1);
+      gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, X.rev); gl.uniform1i(u(pM, 'uR'), 2); gl.activeTexture(gl.TEXTURE3); gl.bindTexture(gl.TEXTURE_2D, B.aux); gl.uniform1i(u(pM, 'uAuxB'), 3); gl.activeTexture(gl.TEXTURE4); gl.bindTexture(gl.TEXTURE_2D, A.aux); gl.uniform1i(u(pM, 'uAuxA'), 4);
+      var veil = reduce ? 0 : .15 * ss(1.5, 4.5, ct) * (1 - ss(6, 14, ct)), Lb = lumW(wB, B.MEANF) * 1.1;
+      gl.uniform1f(u(pM, 'uLT'), lt); gl.uniform1f(u(pM, 'uLT2'), reduce ? lt : ss(1.6, 4.4, ct)); gl.uniform1f(u(pM, 'uRT'), reduce ? lt : 1); gl.uniform1f(u(pM, 'uVeil'), veil); var dt3 = st.day ? [.98, .9, .78] : [.62, .7, .86]; gl.uniform3fv(u(pM, 'uDust'), [Lb * dt3[0], Lb * dt3[1], Lb * dt3[2]]); gl.uniform1i(u(pM, 'uH'), H);
+      gl.drawArrays(gl.TRIANGLES, 0, 3);
+      AMB = [Lb * 1.7, Lb * 1.64, Lb * 1.55]; SUNV = st.sunDir && st.sun > 0 ? [st.sunDir[0] * st.sun, st.sunDir[1] * st.sun, st.sunDir[2] * st.sun] : [0, 0, 0];
+      if (!reduce) debris(ct);
+      var sk = reduce ? [0, 0] : shake(ct); frame.style.transform = 'translate(-50%,-50%) translate(' + sk[0].toFixed(2) + 'px,' + sk[1].toFixed(2) + 'px)';
+      if (ct > (reduce ? 3 : CEND) && COL.fix == null) finishCollapse();
+    }
+    gl.disable(gl.BLEND); gl.bindVertexArray(X.vao);
+    gl.viewport(0, 0, X.qw, X.qh); gl.bindFramebuffer(gl.FRAMEBUFFER, X.q[0].f); gl.useProgram(X.pD); gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, X.col); gl.uniform1i(u(X.pD, 'uC'), 0); gl.uniform1f(u(X.pD, 'uExpo'), CURT.expo); gl.uniform2fv(u(X.pD, 'uR'), [X.qw, X.qh]); gl.drawArrays(gl.TRIANGLES, 0, 3);
+    gl.useProgram(X.pL); gl.uniform2fv(u(X.pL, 'uR'), [X.qw, X.qh]); gl.uniform1i(u(X.pL, 'uC'), 0);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, X.q[1].f); gl.bindTexture(gl.TEXTURE_2D, X.q[0].t); gl.uniform2fv(u(X.pL, 'uD'), [1.6, 0]); gl.drawArrays(gl.TRIANGLES, 0, 3);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, X.q[0].f); gl.bindTexture(gl.TEXTURE_2D, X.q[1].t); gl.uniform2fv(u(X.pL, 'uD'), [0, 1.6]); gl.drawArrays(gl.TRIANGLES, 0, 3);
+    gl.viewport(0, 0, W, H); gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.useProgram(X.pB); gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, X.col); gl.uniform1i(u(X.pB, 'uC'), 0); gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, X.q[0].t); gl.uniform1i(u(X.pB, 'uBl'), 1);
+    gl.uniform1f(u(X.pB, 'uExpo'), CURT.expo); gl.uniform1f(u(X.pB, 'uT'), reduce ? 0 : t); gl.uniform2fv(u(X.pB, 'uR'), [W, H]); gl.uniform1f(u(X.pB, 'uSat'), st.day ? 1 - .45 * st.adapt * (1 - lt) : .55 + .3 * (1 - ev));
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+    if (now - lastRB > 700) { lastRB = now; if (!RB) RB = new Uint8Array(W * H * 4); gl.readPixels(0, 0, W, H, gl.RGBA, gl.UNSIGNED_BYTE, RB); if (!LUM) LUM = new Float32Array(W * H);
+      for (var j = 0; j < H; j++) { var row = (H - 1 - j) * W; for (var i = 0; i < W; i++) { var q = (row + i) * 4; LUM[j * W + i] = (.3 * RB[q] + .59 * RB[q + 1] + .11 * RB[q + 2]) / 255; } } }
+    drawLive(t, dt, st, ev, fc, ct);
+    clock(st);
+  }
+  /* 破片と鏡の玉を、遠い順に、崩れる前の画を貼って描く */
+  var DV = new Float32Array(13 * 3 * 16384);
+  var AMB = [0, 0, 0], SUNV = [0, 1, 0];
+  function debris(ct) {
+    var items = [];
+    COL.P.forEach(function (P) { if (P.kind === 'open' && COL.ev < .02) return; if (ct > P.ts + (P.kind === 'floor' ? 1.8 : P.ti + .5)) return; var s = pieceAt(P, ct); if (s.al <= 0) return; s.P = P; s.cz = proj(s.c[0], s.c[1], s.c[2]).z; items.push(s); });
+    COL.balls.forEach(function (b) { var s = ballAt(b, ct); if (!s.on) return; s.b = b; s.cz = proj(s.x, s.y, s.z).z; items.push(s); });
+    items.sort(function (a, b) { return b.cz - a.cz; });
+    var n = 0, runs = [], cur = null;
+    items.forEach(function (s) {
+      if (s.b) { runs.push({ball: s}); cur = null; return; }
+      if (!cur) { cur = {first: n, count: 0}; runs.push(cur); }
+      /* 厚みのある板：部屋の側は崩れる前の画、裏と割れた縁はコンクリート。見えている面だけを出す（凸なので重ならない） */
+      var v = s.v, v0 = s.P.v0, nn = s.n || [0, 1, 0], th = s.P.th, E = C.eye, m = v.length, bk = v.map(function (q) { return [q[0] - nn[0] * th, q[1] - nn[1] * th, q[2] - nn[2] * th]; });
+      var vis = function (nx, q) { return nx[0] * (E[0] - q[0]) + nx[1] * (E[1] - q[1]) + nx[2] * (E[2] - q[2]) > 0; };
+      var emit = function (a, a0, nx, shd) { if (n + 1 > DV.length / 13) return; var o = n * 13; DV[o] = a[0]; DV[o + 1] = a[1]; DV[o + 2] = a[2]; DV[o + 3] = a0[0]; DV[o + 4] = a0[1]; DV[o + 5] = a0[2]; DV[o + 6] = nx[0]; DV[o + 7] = nx[1]; DV[o + 8] = nx[2]; DV[o + 9] = s.al; DV[o + 10] = shd; DV[o + 11] = s.mv ? 1 : 0; DV[o + 12] = s.lit; n++; cur.count++; };
+      if (vis(nn, s.c)) { for (var i = 1; i < m - 1; i++) { emit(v[0], v0[0], nn, s.shd); emit(v[i], v0[i], nn, s.shd); emit(v[i + 1], v0[i + 1], nn, s.shd); } }
+      else if (th > 0 && s.mv) { var nb = [-nn[0], -nn[1], -nn[2]]; for (var i2 = 1; i2 < m - 1; i2++) { emit(bk[0], v0[0], nb, -1); emit(bk[i2], v0[i2], nb, -1); emit(bk[i2 + 1], v0[i2 + 1], nb, -1); } }
+      if (th > 0 && s.mv) for (var e = 0; e < m; e++) { var a = v[e], b = v[(e + 1) % m], a2 = bk[e], b2 = bk[(e + 1) % m], ed = [b[0] - a[0], b[1] - a[1], b[2] - a[2]], sn = norm3([ed[1] * nn[2] - ed[2] * nn[1], ed[2] * nn[0] - ed[0] * nn[2], ed[0] * nn[1] - ed[1] * nn[0]]), mid = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2];
+        if (sn[0] * (mid[0] - s.c[0]) + sn[1] * (mid[1] - s.c[1]) + sn[2] * (mid[2] - s.c[2]) < 0) sn = [-sn[0], -sn[1], -sn[2]];
+        if (!vis(sn, mid)) continue; emit(a, v0[e], sn, -1); emit(b, v0[e], sn, -1); emit(b2, v0[e], sn, -1); emit(a, v0[e], sn, -1); emit(b2, v0[e], sn, -1); emit(a2, v0[e], sn, -1); } });
+    gl.bindFramebuffer(gl.FRAMEBUFFER, X.fb); gl.viewport(0, 0, W, H); gl.enable(gl.BLEND); gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+    gl.bindVertexArray(X.dvao); gl.bindBuffer(gl.ARRAY_BUFFER, X.dvb); gl.bufferData(gl.ARRAY_BUFFER, DV.subarray(0, n * 13), gl.DYNAMIC_DRAW);
+    var pP = X.pP, pO = X.pO, vu = [V.cx, C.hy, C.f, V.w];
+    gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, X.snap.t); gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, X.rev); gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, B.aux); gl.activeTexture(gl.TEXTURE3); gl.bindTexture(gl.TEXTURE_2D, X.snapI.t);
+    runs.forEach(function (r) {
+      if (r.ball) { var s = r.ball, b = s.b, p0 = proj(b.x, b.y, b.z), p1 = proj(s.x, s.y, s.z); if (p1.z < .3) return;
+        gl.useProgram(pO); gl.bindVertexArray(X.bvao); gl.uniform1i(u(pO, 'uSnap'), 0); gl.uniform1i(u(pO, 'uAuxB'), 2); gl.uniform1i(u(pO, 'uH'), H); gl.uniform2fv(u(pO, 'uR'), [W, H]);
+        var r0 = b.r * p0.s * PXK, kr = 1; gl.uniform4fv(u(pO, 'uB0'), [p0.x * PXK, p0.y * PXK, r0 * kr, 0]); gl.uniform4fv(u(pO, 'uB1'), [p1.x * PXK, p1.y * PXK, b.r * p1.s * PXK * kr, p1.z]); gl.drawArrays(gl.TRIANGLES, 0, 6); return; }
+      gl.useProgram(pP); gl.bindVertexArray(X.dvao); gl.uniform1i(u(pP, 'uSnap'), 3); gl.uniform3fv(u(pP, 'uAmb'), AMB); gl.uniform3fv(u(pP, 'uSunV'), SUNV); gl.uniform1i(u(pP, 'uMask'), 1); gl.uniform1i(u(pP, 'uAuxB'), 2); gl.uniform1i(u(pP, 'uH'), H);
+      gl.uniform3fv(u(pP, 'uEye'), C.eye); gl.uniform3fv(u(pP, 'uF'), F); gl.uniform3fv(u(pP, 'uU'), U); gl.uniform4fv(u(pP, 'uV'), vu); gl.drawArrays(gl.TRIANGLES, r.first, r.count); });
+    gl.disable(gl.BLEND); gl.bindVertexArray(null);
+  }
+
+  /* ── 羽と鳥、土ぼこり、鏡の玉のかけら（2D の重ね） ── */
+  var lctx = live.getContext('2d');
+  function prepLive() { var b = live.getBoundingClientRect(), d = Math.min(window.devicePixelRatio || 1, 2); live.width = Math.max(1, Math.round(b.width * d)); live.height = Math.max(1, Math.round(b.height * d)); lctx.setTransform(live.width / V.w, 0, 0, live.height / V.h, 0, 0); }
+  if (window.ResizeObserver) new ResizeObserver(prepLive).observe(live); prepLive();
+  var rngF = rng(99);
+  function windFeather(r) { return {x: S.W / 2 + (r() - .5) * 14, y: 1.4 + r() * 4, z: S.D + 6 + r() * 16, vz: -(.9 + r() * .6), vy: -(.02 + r() * .05), vx: (r() - .5) * .3, a: r() * TAU, ph: r() * TAU}; }
+  var FEATH = []; for (var i0 = 0; i0 < 7; i0++) { var f0 = windFeather(rngF), tt = rngF() * 22; f0.z += f0.vz * tt; f0.y = Math.max(.6, f0.y + f0.vy * tt); FEATH.push(f0); }
+  var nextF = 2.5;
+  function feather(g, x, y, a, s, l, alpha, flip) {
+    g.save(); g.translate(x, y); g.rotate(a); g.globalAlpha = alpha; var L = .46 * s, c = Math.round(80 + 170 * l); g.fillStyle = 'rgb(' + c + ',' + c + ',' + Math.round(c * .96) + ')'; g.scale(1, flip);
+    g.beginPath(); g.moveTo(-L * .42, 0); g.bezierCurveTo(-L * .2, -L * .2, L * .28, -L * .17, L * .5, -L * .02); g.bezierCurveTo(L * .3, L * .07, -L * .15, L * .1, -L * .42, 0); g.fill();
+    g.globalAlpha = alpha * .5; g.beginPath(); g.ellipse(-L * .46, 0, L * .07, L * .05, 0, 0, TAU); g.fill(); g.globalAlpha = alpha;
+    g.strokeStyle = 'rgba(70,64,58,' + (.5 * alpha).toFixed(2) + ')'; g.lineWidth = Math.max(.02, .004 * s); g.beginPath(); g.moveTo(-L * .62, L * .02); g.quadraticCurveTo(0, -L * .045, L * .5, -L * .02); g.stroke(); g.restore();
+  }
+  /* 土ぼこりの粒の絵（明るさ六段） */
+  function puffs(t3) { return [0, 1, 2, 3, 4, 5].map(function (k) { var c = document.createElement('canvas'); c.width = c.height = 64; var g = c.getContext('2d'), v = 40 + k * 40, gr = g.createRadialGradient(32, 32, 0, 32, 32, 32), col = Math.round(v * t3[0]) + ',' + Math.round(v * t3[1]) + ',' + Math.round(v * t3[2]);
+    gr.addColorStop(0, 'rgba(' + col + ',1)'); gr.addColorStop(.55, 'rgba(' + col + ',.45)'); gr.addColorStop(1, 'rgba(' + col + ',0)'); g.fillStyle = gr; g.fillRect(0, 0, 64, 64); return c; }); }
+  var PUFF = puffs([1, .93, .84]), PUFFN = puffs([.8, .86, 1]);
+  function drawCollapse(ct, st) {
+    var g = lctx, ph = COL.phase;
+    /* 吊る線（玉が落ちるまで） */
+    if (ph === 1) { g.strokeStyle = 'rgba(190,192,196,.2)'; g.lineWidth = .16; COL.balls.forEach(function (b) { var s = ballAt(b, ct); if (!s.on || !s.hang) return; var a = proj(s.x, s.y + b.r, s.z), c = proj(b.x, S.H, b.z); g.beginPath(); g.moveTo(a.x, a.y); g.lineTo(c.x, c.y); g.stroke(); }); }
+    if (ph === 1) {
+      /* 天井から落ちる粉 */
+      g.fillStyle = 'rgba(190,180,165,.5)'; COL.specks.forEach(function (k) { var a = ct - k.t0; if (a < 0 || a > 2.2) return; var p = proj(k.x, k.y - 4.9 * a * a * .6, k.z); if (p.z < .3) return; var r = Math.max(.15, k.s * p.s); g.globalAlpha = (1 - a / 2.2) * .7; g.fillRect(p.x - r / 2, p.y - r * 2, r, r * 4); });
+      /* 小さな破片 */
+      g.fillStyle = 'rgb(40,36,34)'; COL.chips.forEach(function (k) { var a = ct - k.t0; if (a < 0 || a > k.life) return; var y = k.y + k.vy * a - 4.9 * a * a; if (y < 0) return; var p = proj(k.x + k.vx * a, y, k.z + k.vz * a); if (p.z < .3 || depthAt(p.x, p.y) < p.z - .3) return; var r = Math.max(.2, k.s * p.s); g.globalAlpha = 1 - a / k.life; g.fillRect(p.x - r / 2, p.y - r / 2, r, r); });
+      /* 割れた瞬間の光 */
+      g.globalCompositeOperation = 'lighter'; COL.balls.forEach(function (b) { var a = ct - b.tb - b.tf; if (a < 0 || a > .35) return; var p = proj(b.x, ground(b.x, b.z) + .1, b.z); if (depthAt(p.x, p.y) < p.z - .3) return; var r = (.2 + 1.4 * a) * p.s, gr = g.createRadialGradient(p.x, p.y, 0, p.x, p.y, r); gr.addColorStop(0, 'rgba(255,250,240,' + (.7 * (1 - a / .35)).toFixed(2) + ')'); gr.addColorStop(1, 'rgba(255,250,240,0)'); g.globalAlpha = 1; g.fillStyle = gr; g.fillRect(p.x - r, p.y - r, 2 * r, 2 * r); });
+      g.globalCompositeOperation = 'source-over';
+    }
+    /* 土ぼこり */
+    var ctp = ph === 1 ? ct : 1e9;
+    if (ph === 1) { g.save(); g.beginPath(); g.moveTo(0, 0); SEATTOP.forEach(function (y, i) { g.lineTo(i * 2, y); }); g.lineTo(V.w, 0); g.closePath(); g.clip(); }
+    if (ph === 1) COL.puffs.forEach(function (k) { var a = ctp - k.t0; if (a < 0 || a > k.life) return; var p = proj(k.x + k.vx * a, k.y + k.vy * a, k.z), r = (k.r0 + k.gr * Math.sqrt(a) * 1.4) * p.s; if (p.z < .5) return;
+      var al = k.a0 * ss(0, .35, a) * (1 - ss(.35 * k.life, k.life, a)); if (depthAt(p.x, p.y) < p.z - 1.5 || al < .005) return; var lv = Math.max(0, Math.min(5, Math.round((lumAt(p.x, p.y) * 1.1 + .08) * 5)));
+      g.globalAlpha = al; g.drawImage((st.day ? PUFF : PUFFN)[lv], p.x - r, p.y - r, 2 * r, 2 * r); });
+    if (ph === 1) g.restore();
+    /* 鏡の玉のかけら：飛び散って砂に落ち、そのあとは日や月の光をときどき返す */
+    var tnow = ph === 1 ? ct : 99, sunV = st.sunDir && st.sun > 0 ? st.sunDir : null, moonV = st.starI > 0 ? starToward(META.moon, -4 + 8 * st.starPos) : null;
+    g.globalCompositeOperation = 'lighter';
+    COL.shards.forEach(function (k) { var a = tnow - k.t0; if (a < 0) return; var x, y, z, moving = a < k.tl + .4;
+      if (a < k.tl) { x = k.x + k.ux * k.vh * a; z = k.z + k.uz * k.vh * a; y = k.y + k.vy * a - 4.9 * a * a; } else { var sl = k.vh * .18 * (1 - Math.exp(-(a - k.tl) * 5)); x = k.x + k.ux * (k.vh * k.tl + sl); z = k.z + k.uz * (k.vh * k.tl + sl); y = ground(x, z) + .004; }
+      var p = proj(x, y, z); if (p.z < .3 || p.x < 0 || p.x > V.w || p.y < 0 || p.y > V.h || depthAt(p.x, p.y) < p.z - .15) return;
+      var vv = norm3([C.eye[0] - x, C.eye[1] - y, C.eye[2] - z]), gl2 = 0; if (sunV) { var h = norm3([sunV[0] + vv[0], sunV[1] + vv[1], sunV[2] + vv[2]]); gl2 += st.sun * Math.pow(Math.max(0, k.n[0] * h[0] + k.n[1] * h[1] + k.n[2] * h[2]), 120); }
+      if (moonV) { var hm = norm3([moonV[0] + vv[0], moonV[1] + vv[1], moonV[2] + vv[2]]); gl2 += .35 * st.starI * Math.pow(Math.max(0, k.n[0] * hm[0] + k.n[1] * hm[1] + k.n[2] * hm[2]), 120); }
+      if (moving) gl2 = Math.max(gl2, .5 + .5 * Math.sin(a * 40 + k.ph));
+      var r = Math.max(.12, k.s * p.s), base = .12 + .5 * lumAt(p.x, p.y); g.globalAlpha = Math.min(1, base * .5 + gl2); g.fillStyle = gl2 > .3 ? '#fffdf6' : '#c8d2dc'; g.fillRect(p.x - r / 2, p.y - r / 2, r, r);
+      if (gl2 > .35) { var L = r * (2 + 5 * gl2); g.globalAlpha = Math.min(1, gl2) * .55; g.fillRect(p.x - L / 2, p.y - .06, L, .12); g.fillRect(p.x - .06, p.y - L / 2, .12, L); } });
+    g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1;
+  }
+  function drawLive(t, dt, st, ev, fc, ct) {
+    lctx.clearRect(0, 0, V.w, V.h); if (!READY || ZM.state) return;
+    var bright = Math.min(1, (st.day ? 1 - .8 * st.adapt * (COL.phase === 2 ? 0 : 1) : .12) * fc), cx = curtainX(ev);
+    var hidden = function (x, z) { if (COL.phase || z < CZ) return false; var xc = C.eye[0] + (x - C.eye[0]) * (CZ - C.eye[2]) / (z - C.eye[2]); return xc < cx[1] || xc > cx[2]; };
+    if (!reduce) {
+      if (t > nextF) { FEATH.push(windFeather(Math.random)); nextF = t + 2.2 + Math.random() * 2.3; }
+      FEATH = FEATH.filter(function (f) { f.z += f.vz * dt; f.y += (f.vy + .35 * Math.sin(t * 1.3 + f.ph)) * dt; f.x += (f.vx + .3 * Math.sin(t * .8 + f.ph * 2)) * dt; f.a += dt * (.6 + .5 * Math.sin(t * .5 + f.ph)); if (f.z < -7 || f.y < .2) return false;
+        var p = proj(f.x, f.y, f.z); if (p.z <= .3 || depthAt(p.x, p.y) < p.z - .1 || hidden(f.x, f.z)) return true; var fade = Math.max(0, Math.min(1, (f.z + 7) / 4));
+        feather(lctx, p.x, p.y, f.a, Math.min(p.s * .6, 14), Math.max(lumAt(p.x, p.y), .3 * bright), .9 * fade * Math.max(.08, bright), Math.sin(t * 1.1 + f.ph)); return true; });
+    }
+    (META.birds || []).forEach(function (b) { var th = b.ph + b.sp * t, bx = b.cx + b.rx * Math.cos(th), bz = b.cz + b.rz * Math.sin(th), by = b.alt + .8 * Math.sin(2 * th + b.ph), p = proj(bx, by, bz); if (p.z <= 1) return;
+      if (depthAt(p.x, p.y) < p.z - 1 || hidden(bx, bz)) return; var sc = p.s * b.span, fl = Math.sin(t * b.flap * TAU / 2 + b.ph), l = lumAt(p.x, p.y);
+      lctx.save(); lctx.translate(p.x, p.y); lctx.globalAlpha = Math.min(1, .3 + .8 * bright); lctx.strokeStyle = l > .3 ? 'rgba(26,28,34,.9)' : 'rgba(205,210,220,' + (.3 + .5 * l).toFixed(2) + ')'; lctx.lineCap = 'round'; lctx.lineWidth = Math.max(.12, .05 * sc);
+      lctx.beginPath(); [-1, 1].forEach(function (sd) { lctx.moveTo(0, 0); lctx.quadraticCurveTo(sd * .25 * sc, -(.12 + .22 * fl) * sc, sd * .5 * sc, -(.02 + .3 * fl) * sc); }); lctx.stroke(); lctx.restore(); });
+    if (COL.phase && !reduce) drawCollapse(ct, st);
+  }
+
+  /* ── 時計（小石の版と同じ：昼と夜の一巡りの帯と、いまの時刻） ── */
+  var clockEl = document.getElementById('clock'), barEl = document.getElementById('cycBar');
+  function clock(st) { var tc = st.tc, msg;
+    if (ZM.state) return;
+    if (COL.phase === 1) msg = '映画館が崩れていく';
+    else if (CURT.target) msg = CURT.v < 1 ? 'カーテンが閉じていく' : 'カーテンが閉じている　' + (ADAPTING ? '暗闇に目が慣れていく' : '暗闇に目が慣れた');
+    else if (CURT.v > 0) msg = 'カーテンが開いていく';
+    else msg = (COL.phase === 2 ? '砂浜　' : '') + (st.day ? '昼 ' + Math.floor(tc) + '／' + DAY + ' 秒　日差しが動く' : '夜 ' + Math.floor(tc - DAY) + '／' + NIGHT + ' 秒　' + (ADAPTING ? '目が慣れていく' : '目が慣れた'));
+    if (clockEl && clockEl.textContent !== msg) clockEl.textContent = msg;
+    if (barEl) barEl.style.left = (tc / CYCLE * 100).toFixed(2) + '%'; }
+
+  var last = performance.now();
+  function loop(now) { var dt = Math.min(.1, (now - last) / 1000); last = now; var t = TFIX != null ? TFIX : (now - T0) / 1000; if (READY && X && !MOPEN && ZM.state !== 2) draw(t, reduce ? 0 : dt); requestAnimationFrame(loop); }
+  requestAnimationFrame(loop);
+  window.__inei = {setT: function (s) { TFIX = s; }, zoom: function (on, s, e) { if (on) zoomTo(1, s); else zoomTo(0); ZM.fix = e == null ? null : e; if (e == null) ZM.t0 = performance.now() - 5000; }, zstate: function () { return ZM.state; }, rdGo: function (s) { rdGo(s); }, rdOk: function () { return RD.ok; }, curtain: function (v, adapted) { CURT.target = v > 0 ? 1 : 0; CURT.v = v; if (adapted) CURT.expo = null; }, ready: function () { return READY; }, mag: function (s) { if (s < 0) closeMag(); else openMag(s); }, magHit: function (x, y) { return onMag({clientX: x, clientY: y}); }, readyB: function () { return B.ok; },
+    collapse: function (ct, adapted) { if (!COL.phase) startCollapse(); COL.fix = ct; if (adapted) CURT.expo = null; }, finish: function () { COL.fix = null; finishCollapse(); CURT.expo = null; }};
+})();
+
+</script>
