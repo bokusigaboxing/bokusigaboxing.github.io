@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>ロビー｜shutanakajima ポートフォリオサイト</title>
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono&display=swap">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono&family=Shippori+Mincho+B1:wght@700&display=swap">
 <style>
 /* 映画館の手前のロビー（2026-10-18、本人の指定）。廃墟のロビーを映画館と同じ作り方で焼いた一枚（lobby/wide.jpg）に、
    ポスター八枚と劇場の扉を押せる所として重ねる。ポスターを押すと、螺旋のように画がそのポスターへ寄り、
@@ -39,6 +39,33 @@ html,body{margin:0;height:100%;background:#050303;color:#e8e0cf;overflow:hidden}
 .nav{right:max(16px,env(safe-area-inset-right,0px));display:none;gap:14px}
 body.near-mode .nav{display:flex}
 @media (max-width:520px){.home{bottom:auto;top:max(14px,env(safe-area-inset-top,0px))}.cap{bottom:max(38px,6vh)}}
+.booth .hot{cursor:pointer}
+/* チケット（2026-10-18、本人の指定）：切符売場を押すと出る。やや汚れた紙。題名には汚れを掛けない。席は劇場の真ん中、上映は今の時刻から */
+.tk-back{position:fixed;inset:0;z-index:8;background:rgba(5,3,3,.62);display:grid;place-items:center;opacity:0;pointer-events:none;transition:opacity .35s}
+.tk-back.on{opacity:1;pointer-events:auto}
+.ticket{position:relative;width:min(460px,88vw);aspect-ratio:2.25/1;display:grid;grid-template-columns:1fr 27%;color:#2a1a12;transform:translateY(14px) rotate(-1.6deg);transition:transform .45s cubic-bezier(.2,.7,.25,1);
+  background:
+    radial-gradient(circle at 86% 80%,transparent 0 24px,rgba(116,74,34,.22) 25.5px,rgba(116,74,34,.08) 28px,transparent 30px),
+    radial-gradient(ellipse 30% 22% at 12% 92%,rgba(120,84,40,.16),transparent 70%),
+    radial-gradient(ellipse 18% 26% at 70% 104%,rgba(90,60,30,.18),transparent 70%),
+    radial-gradient(ellipse 12% 10% at 96% 8%,rgba(90,64,34,.2),transparent 70%),
+    linear-gradient(100deg,#eadcbd,#e4d3ae 60%,#dccaa2);
+  box-shadow:inset 0 0 22px rgba(96,62,26,.28),0 18px 40px rgba(0,0,0,.55);
+  -webkit-mask:radial-gradient(circle 9px at 73% 0,#0000 98%,#000) top/100% 51% no-repeat,radial-gradient(circle 9px at 73% 100%,#0000 98%,#000) bottom/100% 51% no-repeat;
+  mask:radial-gradient(circle 9px at 73% 0,#0000 98%,#000) top/100% 51% no-repeat,radial-gradient(circle 9px at 73% 100%,#0000 98%,#000) bottom/100% 51% no-repeat}
+.tk-back.on .ticket{transform:rotate(-1.6deg)}
+.ticket::after{content:"";position:absolute;inset:0;z-index:1;pointer-events:none;opacity:.5;mix-blend-mode:multiply;   /* 紙の繊維と細かな汚れ */
+  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' seed='4'/%3E%3CfeColorMatrix values='0 0 0 0 .38 0 0 0 0 .27 0 0 0 0 .15 0 0 0 -1.6 1.05'/%3E%3C/filter%3E%3Crect width='240' height='240' filter='url(%23n)'/%3E%3C/svg%3E")}
+.ticket .main{position:relative;padding:5.2% 6% 5%;display:flex;flex-direction:column;justify-content:space-between;font:400 11px/1.5 var(--mono);letter-spacing:.06em}
+.ticket .main .t1{font-size:10px;letter-spacing:.32em;opacity:.8}
+.ticket .main .t2{position:relative;z-index:2;font:700 clamp(28px,8.4vw,40px)/1 "Shippori Mincho B1",serif;letter-spacing:.12em;color:#1b0e0f}   /* 題名は汚れの上に刷る（汚れが掛からない） */
+.ticket dl{display:grid;grid-template-columns:auto 1fr auto 1fr;gap:3px 12px;margin:0;font-variant-numeric:tabular-nums}
+.ticket dt{opacity:.62}
+.ticket dd{margin:0}
+.ticket .stub{position:relative;border-left:1.5px dashed rgba(42,26,18,.42);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;font:400 10px/1.3 var(--mono);letter-spacing:.08em;text-align:center}
+.ticket .stub b{font:700 22px/1 var(--mono);letter-spacing:.02em}
+.tk-close{position:absolute;left:50%;bottom:max(22px,6vh);transform:translateX(-50%);font:11px/1.5 var(--mono);letter-spacing:.12em;color:rgba(232,222,214,.75);background:none;border:0;cursor:pointer;padding:6px 10px}
+.tk-close:hover,.tk-close:focus-visible{color:#e8e0cf;text-decoration:underline;text-underline-offset:3px;outline:none}
 </style>
 </head>
 <body>
@@ -46,11 +73,19 @@ body.near-mode .nav{display:flex}
 <div class="near" id="near" aria-hidden="true"><img id="n0" alt=""><img id="n1" alt="" style="opacity:0"></div>
 <img class="zoom" id="zimg" alt="">
 <div class="fade" id="fade"></div>
+<div class="tk-back" id="tkback" role="dialog" aria-modal="true" aria-label="チケット" aria-hidden="true">
+  <div class="ticket" id="ticket">
+    <div class="main"><div class="t1">ADMIT ONE　入場券</div><div class="t2">映画館</div>
+      <dl><dt>日付</dt><dd id="tdate"></dd><dt>上映</dt><dd id="ttime"></dd><dt>座席</dt><dd id="tseat"></dd><dt>番号</dt><dd id="tno"></dd></dl></div>
+    <div class="stub"><span>SEAT</span><b id="tseat2"></b><span id="ttime2"></span></div>
+  </div>
+  <button type="button" class="tk-close" id="tkclose">閉じる</button>
+</div>
 <a class="ui home" id="home" href="index.html">← Top</a>
 <div class="ui cap" id="cap" aria-live="polite"></div>
 <div class="ui nav" id="nav"><button type="button" id="prev">← 前</button><span id="num"></span><button type="button" id="next">次 →</button></div>
 <script>
-/*LOBBY*/var LOBBY = {"w":1440,"h":810,"posters":[{"cap":"詩｜「ソネットと場違い」","aspect":0.7061,"tilt":0,"wide":[[0.8658,0.2757],[0.9651,0.2457],[0.9592,0.5285],[0.8619,0.5159]],"near":[[0.35,0.132],[0.65,0.132],[0.65,0.8633],[0.35,0.8633]],"face":[[0.3686,0.1684],[0.6314,0.1684],[0.6314,0.8303],[0.3686,0.8303]]},{"cap":"短歌コラージュ","aspect":0.75,"tilt":0.012,"wide":[[0.734,0.3163],[0.7933,0.2966],[0.7916,0.5059],[0.7329,0.5002]],"near":[[0.3393,0.1354],[0.6558,0.1287],[0.6607,0.8599],[0.3442,0.8666]],"face":[[0.3582,0.1714],[0.6374,0.1654],[0.6418,0.8273],[0.3626,0.8332]]},{"cap":"短歌｜「4月」","aspect":0.707,"tilt":-0.03,"wide":[[0.6555,0.3375],[0.6918,0.33],[0.6888,0.4954],[0.6532,0.4874]],"near":[[0.3561,0.1242],[0.6562,0.1402],[0.6439,0.8711],[0.3438,0.8551]],"face":[[0.374,0.1615],[0.6371,0.1755],[0.626,0.8371],[0.3629,0.8231]]},{"cap":"短歌｜連作「メイデー」","aspect":0.707,"tilt":0,"wide":[[0.5996,0.356],[0.6248,0.3484],[0.624,0.4853],[0.599,0.4821]],"near":[[0.3499,0.132],[0.6501,0.132],[0.6501,0.8633],[0.3499,0.8633]],"face":[[0.3684,0.1684],[0.6316,0.1684],[0.6316,0.8303],[0.3684,0.8303]]},{"cap":"短歌｜連作「誠実盲」","aspect":0.7064,"tilt":0.006,"wide":[[0.5594,0.3683],[0.5779,0.3623],[0.5776,0.4791],[0.5592,0.4772]],"near":[[0.3487,0.1336],[0.6488,0.1304],[0.6513,0.8617],[0.3512,0.8649]],"face":[[0.3674,0.1698],[0.6304,0.167],[0.6326,0.8289],[0.3696,0.8317]]},{"cap":"短歌｜連作「誠実盲」","aspect":0.7064,"tilt":0.075,"wide":[[0.5283,0.3802],[0.5424,0.3706],[0.5437,0.472],[0.5296,0.4756]],"near":[[0.335,0.153],[0.6342,0.1131],[0.665,0.8423],[0.3658,0.8822]],"face":[[0.3549,0.1868],[0.6172,0.1518],[0.6451,0.8118],[0.3828,0.8468]]},{"cap":"短歌｜連作「Alt Me + You」より「この道六年」","aspect":0.7064,"tilt":0,"wide":[[0.5051,0.3845],[0.5163,0.3811],[0.5162,0.4714],[0.505,0.47]],"near":[[0.35,0.132],[0.65,0.132],[0.65,0.8633],[0.35,0.8633]],"face":[[0.3685,0.1684],[0.6315,0.1684],[0.6315,0.8303],[0.3685,0.8303]]},{"cap":"短歌｜連作「ダウンフォース」","aspect":0.7064,"tilt":-0.014,"wide":[[0.4859,0.3899],[0.495,0.3879],[0.4948,0.4691],[0.4857,0.4671]],"near":[[0.3529,0.1283],[0.6529,0.1358],[0.6471,0.867],[0.3471,0.8595]],"face":[[0.3711,0.1651],[0.6341,0.1717],[0.6289,0.8335],[0.3659,0.827]]}],"door":[[0.2991,0.5265],[0.383,0.5234],[0.3821,0.3488],[0.2974,0.3451]]};/*END*/
+/*LOBBY*/var LOBBY = {"w":1440,"h":810,"posters":[{"cap":"詩｜「ソネットと場違い」","aspect":0.7061,"tilt":0,"wide":[[0.8658,0.2757],[0.9651,0.2457],[0.9592,0.5285],[0.8619,0.5159]],"near":[[0.35,0.132],[0.65,0.132],[0.65,0.8633],[0.35,0.8633]],"face":[[0.3686,0.1684],[0.6314,0.1684],[0.6314,0.8303],[0.3686,0.8303]]},{"cap":"短歌コラージュ","aspect":0.75,"tilt":0.012,"wide":[[0.734,0.3163],[0.7933,0.2966],[0.7916,0.5059],[0.7329,0.5002]],"near":[[0.3393,0.1354],[0.6558,0.1287],[0.6607,0.8599],[0.3442,0.8666]],"face":[[0.3582,0.1714],[0.6374,0.1654],[0.6418,0.8273],[0.3626,0.8332]]},{"cap":"短歌｜「4月」","aspect":0.707,"tilt":-0.03,"wide":[[0.6555,0.3375],[0.6918,0.33],[0.6888,0.4954],[0.6532,0.4874]],"near":[[0.3561,0.1242],[0.6562,0.1402],[0.6439,0.8711],[0.3438,0.8551]],"face":[[0.374,0.1615],[0.6371,0.1755],[0.626,0.8371],[0.3629,0.8231]]},{"cap":"短歌｜連作「メイデー」","aspect":0.707,"tilt":0,"wide":[[0.5996,0.356],[0.6248,0.3484],[0.624,0.4853],[0.599,0.4821]],"near":[[0.3499,0.132],[0.6501,0.132],[0.6501,0.8633],[0.3499,0.8633]],"face":[[0.3684,0.1684],[0.6316,0.1684],[0.6316,0.8303],[0.3684,0.8303]]},{"cap":"短歌｜連作「誠実盲」","aspect":0.7064,"tilt":0.006,"wide":[[0.5594,0.3683],[0.5779,0.3623],[0.5776,0.4791],[0.5592,0.4772]],"near":[[0.3487,0.1336],[0.6488,0.1304],[0.6513,0.8617],[0.3512,0.8649]],"face":[[0.3674,0.1698],[0.6304,0.167],[0.6326,0.8289],[0.3696,0.8317]]},{"cap":"短歌｜連作「誠実盲」","aspect":0.7064,"tilt":0.075,"wide":[[0.5283,0.3802],[0.5424,0.3706],[0.5437,0.472],[0.5296,0.4756]],"near":[[0.335,0.153],[0.6342,0.1131],[0.665,0.8423],[0.3658,0.8822]],"face":[[0.3549,0.1868],[0.6172,0.1518],[0.6451,0.8118],[0.3828,0.8468]]},{"cap":"短歌｜連作「Alt Me + You」より「この道六年」","aspect":0.7064,"tilt":0,"wide":[[0.5051,0.3845],[0.5163,0.3811],[0.5162,0.4714],[0.505,0.47]],"near":[[0.35,0.132],[0.65,0.132],[0.65,0.8633],[0.35,0.8633]],"face":[[0.3685,0.1684],[0.6315,0.1684],[0.6315,0.8303],[0.3685,0.8303]]},{"cap":"短歌｜連作「ダウンフォース」","aspect":0.7064,"tilt":-0.014,"wide":[[0.4859,0.3899],[0.495,0.3879],[0.4948,0.4691],[0.4857,0.4671]],"near":[[0.3529,0.1283],[0.6529,0.1358],[0.6471,0.867],[0.3471,0.8595]],"face":[[0.3711,0.1651],[0.6341,0.1717],[0.6289,0.8335],[0.3659,0.827]]}],"booth":[[0.0628,0.6284],[0.3208,0.6091],[0.3183,0.3064],[0.0561,0.29]],"door":[[0.2991,0.5265],[0.383,0.5234],[0.3821,0.3488],[0.2974,0.3451]]};/*END*/
 (function () {
   var L = LOBBY, sc = document.getElementById('sc'), stage = document.getElementById('stage'), hots = document.getElementById('hots'), near = document.getElementById('near'), N = [document.getElementById('n0'), document.getElementById('n1')],
     cap = document.getElementById('cap'), home = document.getElementById('home'), fade = document.getElementById('fade'), num = document.getElementById('num');
@@ -76,6 +111,24 @@ body.near-mode .nav{display:flex}
   var dp = document.createElementNS(NS, 'polygon'); dp.setAttribute('points', pts(L.door)); dp.setAttribute('class', 'hot'); a.appendChild(dp); hots.appendChild(a);
   a.addEventListener('mouseenter', function () { if (cur < 0) say('THEATER →'); }); a.addEventListener('mouseleave', function () { if (cur < 0) say(''); });
   a.addEventListener('click', function (e) { if (busy) { e.preventDefault(); return; } e.preventDefault(); enter(); });
+  /* 切符売場：押すとチケット（今の時刻から次の上映、席は劇場の真ん中） */
+  var bg = document.createElementNS(NS, 'g'); bg.setAttribute('class', 'booth'); var bp = document.createElementNS(NS, 'polygon'); bp.setAttribute('points', pts(L.booth)); bp.setAttribute('class', 'hot'); bp.setAttribute('tabindex', '0'); bp.setAttribute('role', 'button'); bp.setAttribute('aria-label', 'チケットを出す');
+  bg.appendChild(bp); hots.insertBefore(bg, hots.firstChild);
+  bp.addEventListener('mouseenter', function () { if (cur < 0) say('TICKETS'); }); bp.addEventListener('mouseleave', function () { if (cur < 0) say(''); });
+  var tkb = document.getElementById('tkback'), p2 = function (n) { return (n < 10 ? '0' : '') + n; };
+  function ticket() {
+    if (busy || cur >= 0) return; var n = new Date(), s = new Date(n.getTime() + 10 * 60000); s.setMinutes(Math.ceil(s.getMinutes() / 5) * 5, 0, 0);   /* 次の上映：今から 10 分後を 5 分に切り上げる */
+    var tm = p2(s.getHours()) + ':' + p2(s.getMinutes()), seat = 'D-19';   /* 劇場の真ん中：七列（A–G）の四列目 D、一列三十七席の十九番 */
+    document.getElementById('tdate').textContent = n.getFullYear() + '.' + p2(n.getMonth() + 1) + '.' + p2(n.getDate());
+    document.getElementById('ttime').textContent = tm; document.getElementById('ttime2').textContent = tm;
+    document.getElementById('tseat').textContent = 'D列 19番'; document.getElementById('tseat2').textContent = seat;
+    document.getElementById('tno').textContent = p2(n.getHours()) + p2(n.getMinutes()) + p2(n.getSeconds());
+    say(''); tkb.classList.add('on'); tkb.setAttribute('aria-hidden', 'false'); document.getElementById('tkclose').focus();
+  }
+  function tclose() { tkb.classList.remove('on'); tkb.setAttribute('aria-hidden', 'true'); bp.focus({preventScroll: true}); }
+  bp.addEventListener('click', ticket); bp.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); ticket(); } });
+  document.getElementById('tkclose').addEventListener('click', tclose); tkb.addEventListener('click', function (e) { if (e.target === tkb) tclose(); });
+  addEventListener('keydown', function (e) { if (e.key === 'Escape' && tkb.classList.contains('on')) tclose(); });
   function say(t) { cap.textContent = t; cap.classList.toggle('on', !!t); }
   /* 画の読み込み：広い画が来てから見せる。寄った画は軽くするため先に全部は読まず、ポスターにカーソルが乗ったとき（押したとき）にその一枚だけ読む */
   var wide = document.getElementById('wide'), pre = [];
