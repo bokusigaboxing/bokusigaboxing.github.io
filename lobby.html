@@ -40,7 +40,7 @@ html,body{margin:0;height:100%;background:#050303;color:#e8e0cf;overflow:hidden}
 body.near-mode .nav{display:flex}
 @media (max-width:520px){.home{bottom:auto;top:max(14px,env(safe-area-inset-top,0px))}.cap{bottom:max(38px,6vh)}}
 .booth .hot{cursor:pointer}
-/* チケット（2026-10-18、本人の指定）：切符売場を押すと出る。やや汚れた紙。題名には汚れを掛けない。席は劇場の真ん中、上映は今の時刻から */
+/* チケット（2026-10-18、本人の指定）：切符売場を押すと出る。やや汚れた紙。題名「詩と接吻」は刷ったあと汚れで読めなくなっている。席は劇場の真ん中、上映は今の時刻から */
 .tk-back{position:fixed;inset:0;z-index:8;background:rgba(5,3,3,.62);display:grid;place-items:center;opacity:0;pointer-events:none;transition:opacity .35s}
 .tk-back.on{opacity:1;pointer-events:auto}
 .ticket{position:relative;width:min(460px,88vw);aspect-ratio:2.25/1;display:grid;grid-template-columns:1fr 27%;color:#2a1a12;transform:translateY(14px) rotate(-1.6deg);transition:transform .45s cubic-bezier(.2,.7,.25,1);
@@ -58,7 +58,15 @@ body.near-mode .nav{display:flex}
   background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' seed='4'/%3E%3CfeColorMatrix values='0 0 0 0 .38 0 0 0 0 .27 0 0 0 0 .15 0 0 0 -1.6 1.05'/%3E%3C/filter%3E%3Crect width='240' height='240' filter='url(%23n)'/%3E%3C/svg%3E")}
 .ticket .main{position:relative;padding:5.2% 6% 5%;display:flex;flex-direction:column;justify-content:space-between;font:400 11px/1.5 var(--mono);letter-spacing:.06em}
 .ticket .main .t1{font-size:10px;letter-spacing:.32em;opacity:.8}
-.ticket .main .t2{position:relative;z-index:2;font:700 clamp(28px,8.4vw,40px)/1 "Shippori Mincho B1",serif;letter-spacing:.12em;color:#1b0e0f}   /* 題名は汚れの上に刷る（汚れが掛からない） */
+.ticket .main .t2{position:relative;align-self:flex-start;font:700 clamp(28px,8.4vw,40px)/1 "Shippori Mincho B1",serif;letter-spacing:.12em;color:#1b0e0f;filter:blur(.7px);opacity:.82;   /* 題名：擦れて欠けた字（雑音の形で字を抜く） */
+  -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='60'%3E%3Cfilter id='e'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.08 .22' numOctaves='3' seed='9'/%3E%3CfeComponentTransfer%3E%3CfeFuncA type='discrete' tableValues='0 0 1 1 1'/%3E%3C/feComponentTransfer%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -2.4 1.7'/%3E%3C/filter%3E%3Crect width='160' height='60' filter='url(%23e)'/%3E%3C/svg%3E") 0 0/100% 100%;
+          mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='60'%3E%3Cfilter id='e'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.08 .22' numOctaves='3' seed='9'/%3E%3CfeComponentTransfer%3E%3CfeFuncA type='discrete' tableValues='0 0 1 1 1'/%3E%3C/feComponentTransfer%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -2.4 1.7'/%3E%3C/filter%3E%3Crect width='160' height='60' filter='url(%23e)'/%3E%3C/svg%3E") 0 0/100% 100%}
+.ticket .smear{position:absolute;z-index:2;left:-2%;top:18%;width:78%;height:56%;pointer-events:none;mix-blend-mode:multiply;transform:rotate(-4deg);   /* 題名の上の汚れ：擦った茶色の染みと、指でこすった筋 */
+  background:radial-gradient(ellipse 46% 52% at 38% 52%,rgba(74,44,18,.86),rgba(88,56,26,.62) 42%,rgba(112,76,38,.3) 66%,transparent 80%),
+    radial-gradient(ellipse 22% 34% at 68% 46%,rgba(82,52,24,.7),rgba(104,70,34,.32) 55%,transparent 78%),
+    radial-gradient(ellipse 48% 16% at 46% 50%,rgba(70,42,18,.5),rgba(70,42,18,.25) 60%,transparent 100%);
+  -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='90'%3E%3Cfilter id='s'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.035' numOctaves='4' seed='3'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -3 2.1'/%3E%3C/filter%3E%3Crect width='200' height='90' filter='url(%23s)'/%3E%3C/svg%3E") 0 0/100% 100%;
+          mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='90'%3E%3Cfilter id='s'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.035' numOctaves='4' seed='3'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -3 2.1'/%3E%3C/filter%3E%3Crect width='200' height='90' filter='url(%23s)'/%3E%3C/svg%3E") 0 0/100% 100%}
 .ticket dl{display:grid;grid-template-columns:auto 1fr auto 1fr;gap:3px 12px;margin:0;font-variant-numeric:tabular-nums}
 .ticket dt{opacity:.62}
 .ticket dd{margin:0}
@@ -75,7 +83,7 @@ body.near-mode .nav{display:flex}
 <div class="fade" id="fade"></div>
 <div class="tk-back" id="tkback" role="dialog" aria-modal="true" aria-label="チケット" aria-hidden="true">
   <div class="ticket" id="ticket">
-    <div class="main"><div class="t1">ADMIT ONE　入場券</div><div class="t2">映画館</div>
+    <div class="main"><div class="t1">ADMIT ONE　入場券</div><div class="t2">詩と接吻</div><div class="smear" aria-hidden="true"></div>
       <dl><dt>日付</dt><dd id="tdate"></dd><dt>上映</dt><dd id="ttime"></dd><dt>座席</dt><dd id="tseat"></dd><dt>番号</dt><dd id="tno"></dd></dl></div>
     <div class="stub"><span>SEAT</span><b id="tseat2"></b><span id="ttime2"></span></div>
   </div>
