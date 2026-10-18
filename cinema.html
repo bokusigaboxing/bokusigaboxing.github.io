@@ -75,7 +75,7 @@ body.reading .clock{visibility:hidden}
 @media (prefers-reduced-motion: reduce){.frame img{transition:none}}
 </style>
 <div class="frame" id="frame">
-  <img id="still" src="top/still.jpg" alt="黒と赤の映画館。最後列からスクリーンの海を見る。宙に浮く三本の螺旋と鏡の玉、スクリーンの向こうの砂浜にも螺旋が立つ">
+  <img id="still" style="opacity:0" src="top/still.jpg" alt="黒と赤の映画館。最後列からスクリーンの海を見る。宙に浮く三本の螺旋と鏡の玉、スクリーンの向こうの砂浜にも螺旋が立つ">
   <canvas id="gl" aria-hidden="true"></canvas>
   <canvas class="live" id="live" aria-hidden="true"></canvas>
 </div>
@@ -290,17 +290,20 @@ body.reading .clock{visibility:hidden}
   }
   var READY = false;
   loadSet(A, function () { READY = true; T0 = performance.now() - (META.start || 18) * 1000; requestAnimationFrame(function () { still.style.opacity = 0; });
+    var openLater = function () { setTimeout(function () { if (!CURT.touched && !COL.phase) CURT.target = 0; }, 5000); };
+    if (document.readyState === 'complete') openLater(); else addEventListener('load', openLater, {once: true});
     /* 崩れたあとの画は、最初の画が出てから後ろで読む */
     setTimeout(function () { try { setTex(B); loadSet(B, function () { plan(); if (COL.pending) startCollapse(); setTimeout(function () { rdInit(); }, 800); }); } catch (e) { console.warn(e); } }, 600); });
 
   /* ── カーテン ── */
-  var CURT = {target: 0, v: 0, expo: null, last: performance.now()}, CZ = S.D - .46, CTOP = S.scr.y1 + 1.1, NFOLD = 8, FAMP = .11;
+  /* 最初はカーテンが閉じている。すべて読み込んでから 5 秒で開く（2026-10-18、本人の指定）。それより前に押したら、押したほうに従う */
+  var CURT = {target: 1, v: 1, expo: null, last: performance.now(), touched: false}, CZ = S.D - .46, CTOP = S.scr.y1 + 1.1, NFOLD = 8, FAMP = .11;
   function curtainX(v) { var Q = S.scr, mid = (Q.x0 + Q.x1) / 2, lo = Q.x0 - .15, ro = Q.x1 + .15; return [Q.x0 - 1.5, lo + (mid - lo) * v, ro + (mid - ro) * v, Q.x1 + 1.5]; }
   function curNorm(per) { var s = 0; for (var k = 0; k < 64; k++) { var ph = k / 64 * TAU, sl = FAMP / per * TAU * Math.cos(ph), nv = 1 / Math.sqrt(1 + sl * sl), ao = .6 + .4 * (.5 + .5 * Math.sin(ph)); s += nv * (1 + .35 * sl * nv) * ao + .5 * (1 - nv) * (1 - nv); } return s / 64; }
   function evt(e) { var b = frame.getBoundingClientRect(); return {x: (e.clientX - b.left) / b.width * V.w, y: (e.clientY - b.top) / b.height * V.h}; }
   function onScreen(e) { var m = evt(e), Q = S.scr, a = proj(Q.x0 - 1.4, Q.y1 + 1, S.D), c = proj(Q.x1 + 1.4, 0, S.D); return m.x > a.x && m.x < c.x && m.y > a.y && m.y < c.y; }
   function onExit(e) { var m = evt(e), E = S.exitDoor, a = proj(.09, E.h + .62, E.z1 + .15), c = proj(.09, 0, E.z0 - .15); return m.x > Math.min(a.x, c.x) - 1 && m.x < Math.max(a.x, c.x) + 1 && m.y > a.y && m.y < c.y; }
-  frame.addEventListener('click', function (e) { if (!READY || ZM.state) return; if (onExit(e)) { startCollapse(); return; } var mg = onMag(e); if (mg >= 0) { zoomTo(1, mg % MAG.sheets.length); return; } if (!COL.phase && onScreen(e)) CURT.target = CURT.target ? 0 : 1; });
+  frame.addEventListener('click', function (e) { if (!READY || ZM.state) return; if (onExit(e)) { startCollapse(); return; } var mg = onMag(e); if (mg >= 0) { zoomTo(1, mg % MAG.sheets.length); return; } if (!COL.phase && onScreen(e)) { CURT.target = CURT.target ? 0 : 1; CURT.touched = true; } });
   frame.addEventListener('mousemove', function (e) { frame.style.cursor = ZM.state ? '' : COL.phase !== 1 && onMag(e) >= 0 ? 'zoom-in' : COL.phase !== 1 && ( (!COL.phase && (onExit(e) || onScreen(e)))) ? 'pointer' : ''; });
 
   /* ── 雑誌：左の螺旋の紙を押すと、その紙（「螺旋の雑誌」の紙）を開く。螺旋の底が創刊 ── */
