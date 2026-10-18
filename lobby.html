@@ -37,6 +37,7 @@ html,body{margin:0;height:100%;background:#050303;color:#e8e0cf;overflow:hidden}
 .cap{left:50%;transform:translateX(-50%);white-space:nowrap;opacity:0;transition:opacity .3s;pointer-events:none}
 .cap.on{opacity:1}
 .nav{right:max(16px,env(safe-area-inset-right,0px));display:none;gap:14px}
+.nav button:disabled{opacity:.3;cursor:default;text-decoration:none}
 body.near-mode .nav{display:flex}
 @media (max-width:520px){.home{bottom:auto;top:max(14px,env(safe-area-inset-top,0px))}.cap{bottom:max(38px,6vh)}}
 .booth .hot{cursor:pointer}
@@ -91,7 +92,7 @@ body.near-mode .nav{display:flex}
 </div>
 <a class="ui home" id="home" href="index.html">← Top</a>
 <div class="ui cap" id="cap" aria-live="polite"></div>
-<div class="ui nav" id="nav"><button type="button" id="prev">← 前</button><span id="num"></span><button type="button" id="next">次 →</button></div>
+<div class="ui nav" id="nav"><button type="button" id="prev">← 左</button><span id="num"></span><button type="button" id="next">右 →</button></div>
 <script>
 /*LOBBY*/var LOBBY = {"w":1440,"h":810,"posters":[{"cap":"詩｜「ソネットと場違い」","aspect":0.7061,"tilt":0,"wide":[[0.8658,0.2757],[0.9651,0.2457],[0.9592,0.5285],[0.8619,0.5159]],"near":[[0.35,0.132],[0.65,0.132],[0.65,0.8633],[0.35,0.8633]],"face":[[0.3686,0.1684],[0.6314,0.1684],[0.6314,0.8303],[0.3686,0.8303]]},{"cap":"短歌コラージュ","aspect":0.75,"tilt":0.012,"wide":[[0.734,0.3163],[0.7933,0.2966],[0.7916,0.5059],[0.7329,0.5002]],"near":[[0.3393,0.1354],[0.6558,0.1287],[0.6607,0.8599],[0.3442,0.8666]],"face":[[0.3582,0.1714],[0.6374,0.1654],[0.6418,0.8273],[0.3626,0.8332]]},{"cap":"短歌｜「4月」","aspect":0.707,"tilt":-0.03,"wide":[[0.6555,0.3375],[0.6918,0.33],[0.6888,0.4954],[0.6532,0.4874]],"near":[[0.3561,0.1242],[0.6562,0.1402],[0.6439,0.8711],[0.3438,0.8551]],"face":[[0.374,0.1615],[0.6371,0.1755],[0.626,0.8371],[0.3629,0.8231]]},{"cap":"短歌｜連作「メイデー」","aspect":0.707,"tilt":0,"wide":[[0.5996,0.356],[0.6248,0.3484],[0.624,0.4853],[0.599,0.4821]],"near":[[0.3499,0.132],[0.6501,0.132],[0.6501,0.8633],[0.3499,0.8633]],"face":[[0.3684,0.1684],[0.6316,0.1684],[0.6316,0.8303],[0.3684,0.8303]]},{"cap":"短歌｜連作「誠実盲」","aspect":0.7064,"tilt":0.006,"wide":[[0.5594,0.3683],[0.5779,0.3623],[0.5776,0.4791],[0.5592,0.4772]],"near":[[0.3487,0.1336],[0.6488,0.1304],[0.6513,0.8617],[0.3512,0.8649]],"face":[[0.3674,0.1698],[0.6304,0.167],[0.6326,0.8289],[0.3696,0.8317]]},{"cap":"短歌｜連作「誠実盲」","aspect":0.7064,"tilt":0.075,"wide":[[0.5283,0.3802],[0.5424,0.3706],[0.5437,0.472],[0.5296,0.4756]],"near":[[0.335,0.153],[0.6342,0.1131],[0.665,0.8423],[0.3658,0.8822]],"face":[[0.3549,0.1868],[0.6172,0.1518],[0.6451,0.8118],[0.3828,0.8468]]},{"cap":"短歌｜連作「Alt Me + You」より「この道六年」","aspect":0.7064,"tilt":0,"wide":[[0.5051,0.3845],[0.5163,0.3811],[0.5162,0.4714],[0.505,0.47]],"near":[[0.35,0.132],[0.65,0.132],[0.65,0.8633],[0.35,0.8633]],"face":[[0.3685,0.1684],[0.6315,0.1684],[0.6315,0.8303],[0.3685,0.8303]]},{"cap":"短歌｜連作「ダウンフォース」","aspect":0.7064,"tilt":-0.014,"wide":[[0.4859,0.3899],[0.495,0.3879],[0.4948,0.4691],[0.4857,0.4671]],"near":[[0.3529,0.1283],[0.6529,0.1358],[0.6471,0.867],[0.3471,0.8595]],"face":[[0.3711,0.1651],[0.6341,0.1717],[0.6289,0.8335],[0.3659,0.827]]}],"booth":[[0.0628,0.6284],[0.3208,0.6091],[0.3183,0.3064],[0.0561,0.29]],"door":[[0.2991,0.5265],[0.383,0.5234],[0.3821,0.3488],[0.2974,0.3451]]};/*END*/
 (function () {
@@ -152,9 +153,11 @@ body.near-mode .nav{display:flex}
     var tx = R.cx - r.left - S * (cx - r.left), ty = R.cy - r.top - S * (cy - r.top);
     stage.style.transform = 'translate(' + tx + 'px,' + ty + 'px) scale(' + S + ')';
   }
+  /* 右の壁のポスターは、奥（番号の大きい方）ほど画面の左に見える。左右と番号は、壁を見たときの左から数える */
+  var prevB = document.getElementById('prev'), nextB = document.getElementById('next');
+  function mark(k) { var n = L.posters.length; num.textContent = (n - k) + ' / ' + n; prevB.disabled = k >= n - 1; nextB.disabled = k <= 0; say(L.posters[k].cap); cur = k; }
   function setNear(k, instant) {
-    var im = N[front]; im.src = 'lobby/p' + (k + 1) + '.jpg'; im.alt = 'ポスター（' + L.posters[k].cap + '）の前に立って見た画';
-    num.textContent = (k + 1) + ' / ' + L.posters.length; say(L.posters[k].cap); cur = k;
+    var im = N[front]; im.src = 'lobby/p' + (k + 1) + '.jpg'; im.alt = 'ポスター（' + L.posters[k].cap + '）の前に立って見た画'; mark(k);
   }
   function ready(k, fn) { load(k); var im = pre[k]; if (!im || im.complete) fn(); else { im.addEventListener('load', fn, {once: true}); im.addEventListener('error', fn, {once: true}); } }
   /* ポスターを押す：画がそのポスターへ寄り、その前に立って見た画に入れ替わる */
@@ -168,10 +171,14 @@ body.near-mode .nav{display:flex}
     });
   }
   /* 寄った画で ← → ：となりのポスターへ（重ねて入れ替える） */
+  /* 左右に移る：d は画面の向き（−1 左、＋1 右）。右へ行くと、手前（番号の小さい方）のポスターへ。端で止まる。新しい画は進む向きから入る */
   function step(d) {
-    if (busy || cur < 0) return; var k = (cur + d + L.posters.length) % L.posters.length; busy = true;
-    ready(k, function () { var back = 1 - front, im = N[back]; im.style.transition = ''; im.style.transform = 'none'; im.src = 'lobby/p' + (k + 1) + '.jpg'; im.style.opacity = 1; N[front].style.opacity = 0; front = back; loadZ(k);
-      num.textContent = (k + 1) + ' / ' + L.posters.length; say(L.posters[k].cap); cur = k; load(k - 1); load(k + 1); setTimeout(function () { busy = false; }, 500); });
+    if (busy || cur < 0) return; var k = cur - d; if (k < 0 || k >= L.posters.length) return; busy = true;
+    ready(k, function () { var back = 1 - front, im = N[back], old = N[front], tr = reduce ? 'opacity .3s' : 'opacity .5s, transform .6s cubic-bezier(.2,.7,.25,1)';
+      im.style.transition = 'none'; im.style.transform = reduce ? 'none' : 'translateX(' + d * 6 + '%)'; im.style.opacity = 0; im.src = 'lobby/p' + (k + 1) + '.jpg'; void im.offsetWidth;
+      im.style.transition = tr; im.style.transform = 'none'; im.style.opacity = 1;
+      old.style.transition = tr; old.style.opacity = 0; if (!reduce) old.style.transform = 'translateX(' + -d * 6 + '%)';
+      front = back; loadZ(k); mark(k); load(k - 1); load(k + 1); setTimeout(function () { busy = false; }, 600); });
   }
   /* 戻る：寄った画が薄れ、広い画が元の大きさへ。いま見ているポスターが広い画に無いときは、そのまま薄れる */
   function close() {
