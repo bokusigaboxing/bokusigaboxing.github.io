@@ -84,7 +84,7 @@ nav li a:focus-visible .en{text-decoration:underline;text-underline-offset:3px}
   <header class="bar">
     <div class="who"><span class="jp">中嶋脩太</span><br><b>Shuta Nakajima</b></div>
     <div>
-      <div class="clock"><span id="date">Thursday Oct 15 2026</span><br><span id="time">12:00:00</span></div>
+      <div class="clock"><span id="date">8346 days</span><br><span id="time">00:00:00</span></div>
       <div class="moon-line"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="7" fill="none" stroke="currentColor" stroke-width="1"/><path id="moonIcon" fill="currentColor" d=""/></svg><span id="moonTxt">月齢 —</span></div>
     </div>
     <nav aria-label="入口">
@@ -175,10 +175,13 @@ nav li a:focus-visible .en{text-decoration:underline;text-underline-offset:3px}
   /* 静止画を撮るための口：__frame(瞼, 寄り, 瞬きの回数) */
   window.__frame = function (t, d, blinks, clip, bk) { lidT = t; drift = d; clipOn = !!clip; back = !!bk; for (var i = 0; i < (blinks || 0); i++) closedMoment(); draw(); };
 
+  var BORN = Date.UTC(2004, 0, 16, 2, 6);   /* 生まれた時刻：2004年1月16日 11時6分（日本時間）。本人の指定（2026-11-22） */
   function tick(){
     var n = new Date();
-    $('date').textContent = D[n.getDay()] + ' ' + M[n.getMonth()] + ' ' + n.getDate() + ' ' + n.getFullYear();
-    $('time').textContent = p2(n.getHours()) + ':' + p2(n.getMinutes()) + ':' + p2(n.getSeconds());
+    /* 日付の代わりに、生まれてから何日目か。下の段は、その日の中の時間（生まれた時刻から数えた時・分・秒） */
+    var life = n.getTime() - BORN, days = Math.floor(life / 864e5), rest = Math.floor((life - days * 864e5) / 1000);
+    $('date').textContent = days.toLocaleString('en-US') + ' days';
+    $('time').textContent = p2(Math.floor(rest / 3600)) + ':' + p2(Math.floor(rest / 60) % 60) + ':' + p2(rest % 60);
     var age = (((n.getTime() - NEW) / 864e5) % SYN + SYN) % SYN; ph = age / SYN;
     $('moonTxt').textContent = '月齢 ' + age.toFixed(1);
     $('moonIcon').setAttribute('d', moonPath(8, 8, 7, ph));

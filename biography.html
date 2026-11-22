@@ -91,7 +91,7 @@ dd small{display:block;font-size:12px;color:var(--soft)}
 <div class="page">
   <header class="bar">
     <div class="who"><a href="index.html"><span class="jp">中嶋脩太</span><br><b>Shuta Nakajima</b></a></div>
-    <div class="clock"><span id="date">Thursday Oct 15 2026</span><br><span id="time">12:00:00</span></div>
+    <div class="clock"><span id="date">8346 days</span><br><span id="time">00:00:00</span></div>
     <nav aria-label="入口">
       <ul>
         <li><a href="biography.html" aria-current="page"><span class="rain" aria-hidden="true" style="height:70px"><svg viewBox="0 0 26 70" preserveAspectRatio="xMidYMax slice"><g><line x1="5" y1="0" x2="5" y2="43.4"/><path d="M2 37.4L5 43.4L8 37.4"/></g><g><line x1="13" y1="0" x2="13" y2="64.4"/><path d="M10 58.4L13 64.4L16 58.4"/></g><g><line x1="21" y1="0" x2="21" y2="51.8"/><path d="M18 45.8L21 51.8L24 45.8"/></g></svg></span><span class="en">Biography</span><span class="jp">経歴</span></a></li>
@@ -162,9 +162,12 @@ dd small{display:block;font-size:12px;color:var(--soft)}
 (function(){
   var D = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'], M = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   var p2 = function(n){ return (n < 10 ? '0' : '') + n; };
+  var BORN = Date.UTC(2004, 0, 16, 2, 6);   /* 生まれた時刻：2004年1月16日 11時6分（日本時間）。本人の指定（2026-11-22） */
   function tick(){ var n = new Date();
-    document.getElementById('date').textContent = D[n.getDay()] + ' ' + M[n.getMonth()] + ' ' + n.getDate() + ' ' + n.getFullYear();
-    document.getElementById('time').textContent = p2(n.getHours()) + ':' + p2(n.getMinutes()) + ':' + p2(n.getSeconds()); }
+    /* 日付の代わりに、生まれてから何日目か。下の段は、その日の中の時間（生まれた時刻から数えた時・分・秒） */
+    var life = n.getTime() - BORN, days = Math.floor(life / 864e5), rest = Math.floor((life - days * 864e5) / 1000);
+    document.getElementById('date').textContent = days.toLocaleString('en-US') + ' days';
+    document.getElementById('time').textContent = p2(Math.floor(rest / 3600)) + ':' + p2(Math.floor(rest / 60) % 60) + ':' + p2(rest % 60); }
   tick(); setInterval(tick, 1000);
 })();
 </script>
